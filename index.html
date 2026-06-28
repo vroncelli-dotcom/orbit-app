@@ -1,0 +1,2433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <meta name="theme-color" content="#E8251A"/>
+  <title>Orbit by RocketPro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html,body,#root{height:100%;width:100%}
+    body{font-family:Inter,sans-serif;background:#FAFAF8;-webkit-font-smoothing:antialiased;overscroll-behavior:none}
+    *{-webkit-tap-highlight-color:transparent}
+    button{font-family:Inter,sans-serif}
+    input,textarea{font-family:Inter,sans-serif}
+    a{text-decoration:none}
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <script type="text/babel" data-presets="react">
+const { useState, useRef, useEffect } = React;
+
+
+
+// ─── TOKENS ──────────────────────────────────────────────────────────────────
+const C = {
+  white:    "#FFFFFF",
+  off:      "#FAFAF8",
+  warm:     "#F5F2EE",
+  rule:     "#E8E3DC",
+  muted:    "#9A9390",
+  ghost:    "#C8C3BC",
+  body:     "#4A4540",
+  ink:      "#111110",
+  red:      "#E8251A",
+  redSoft:  "#FEF1F0",
+  redMid:   "#FBDBD9",
+  gold:     "#C9922A",
+  goldSoft: "#FBF4E4",
+  goldRule: "#E8C97A",
+  green:    "#0A7A4A",
+  greenSoft:"#E6F4EE",
+  navy:     "#003057",
+};
+
+const T = {
+  display: { fontFamily:"Inter,sans-serif", fontWeight:900, letterSpacing:"-0.033em", lineHeight:1.0 },
+  heading: { fontFamily:"Inter,sans-serif", fontWeight:700, letterSpacing:"-0.02em",  lineHeight:1.15 },
+  subhead: { fontFamily:"Inter,sans-serif", fontWeight:600, letterSpacing:"-0.01em",  lineHeight:1.3 },
+  body:    { fontFamily:"Inter,sans-serif", fontWeight:400, letterSpacing:"0",         lineHeight:1.65 },
+  label:   { fontFamily:"Inter,sans-serif", fontWeight:600, letterSpacing:"0.07em",   lineHeight:1, textTransform:"uppercase" },
+  caption: { fontFamily:"Inter,sans-serif", fontWeight:400, letterSpacing:"0.01em",   lineHeight:1.45 },
+};
+
+// ─── ORBIT LOGO ───────────────────────────────────────────────────────────────
+const Logo = ({ dark=false, size="md" }) => {
+  const sz = size==="sm" ? 26 : 32;
+  const c1 = dark ? C.white : C.red;
+  const c2 = dark ? "rgba(255,255,255,.3)" : "rgba(232,37,26,.28)";
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:9 }}>
+      <svg width={sz} height={sz} viewBox="0 0 32 32" fill="none">
+        <circle cx="16" cy="16" r="5" fill={c1}/>
+        <circle cx="16" cy="16" r="13.5" stroke={c1} strokeWidth="1.5" fill="none"/>
+        <ellipse cx="16" cy="16" rx="13.5" ry="4.5"
+          stroke={c2} strokeWidth="1.2" fill="none"
+          strokeDasharray="4.5 3" transform="rotate(-38 16 16)"/>
+      </svg>
+      <div>
+        <div style={{ ...T.display, fontSize:size==="sm"?17:21, color:dark?C.white:C.ink, lineHeight:1 }}>Orbit</div>
+        <div style={{ ...T.label, fontSize:7, color:dark?"rgba(255,255,255,.35)":C.muted, marginTop:2, letterSpacing:"0.1em" }}>by RocketPro</div>
+      </div>
+    </div>
+  );
+};
+
+// ─── SHARED ──────────────────────────────────────────────────────────────────
+const Btn = ({ children, v="red", onClick, disabled, s={} }) => {
+  const V = {
+    red:    { background:C.red,     color:C.white, border:"none",                  boxShadow:"0 2px 14px rgba(232,37,26,.28)" },
+    outline:{ background:C.white,   color:C.ink,   border:`1.5px solid ${C.rule}`, boxShadow:"none" },
+    ghost:  { background:C.warm,    color:C.body,  border:`1px solid ${C.rule}`,   boxShadow:"none" },
+    navy:   { background:C.navy,    color:C.white, border:"none",                  boxShadow:"0 2px 12px rgba(0,48,87,.2)" },
+    gold:   { background:C.gold,    color:C.white, border:"none",                  boxShadow:"0 2px 12px rgba(201,146,42,.3)" },
+    soft:   { background:C.redSoft, color:C.red,   border:`1px solid ${C.redMid}`, boxShadow:"none" },
+  };
+  return (
+    <button onClick={onClick} disabled={disabled} style={{
+      width:"100%", padding:"15px 20px", borderRadius:4,
+      fontFamily:"Inter,sans-serif", fontWeight:600, fontSize:15,
+      cursor:disabled?"not-allowed":"pointer", opacity:disabled?.45:1,
+      transition:"opacity .15s", ...V[v], ...s,
+    }}>{children}</button>
+  );
+};
+
+const Rule = () => <div style={{ height:1, background:C.rule }}/>;
+
+const Lbl = ({ children }) => (
+  <div style={{ ...T.label, fontSize:9, color:C.muted, marginBottom:8 }}>{children}</div>
+);
+
+// Bottom nav — same across both flows once inside
+const BottomNav = ({ tabs, active, onTab }) => (
+  <div style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:420, background:C.white, borderTop:`1px solid ${C.rule}`, display:"flex", zIndex:50 }}>
+    {tabs.map(t => (
+      <button key={t.id} onClick={()=>onTab(t.id)} style={{
+        flex:1, padding:"12px 3px 22px", background:"none", border:"none", cursor:"pointer",
+        ...T.label, fontSize:8,
+        color: active===t.id ? C.red : C.muted,
+        borderTop: active===t.id ? `2px solid ${C.red}` : "2px solid transparent",
+      }}>{t.label}</button>
+    ))}
+  </div>
+);
+
+// ─── DATA ────────────────────────────────────────────────────────────────────
+const COMPANIES = [
+  {
+    id:1, name:"Summit Mortgage Partners", type:"Independent Broker",
+    location:"Dallas, TX", remote:"Hybrid", comp:"80 / 20 split",
+    volume:"$220M / yr", founded:"2011", bg:C.ink,
+    tagline:"We grow your brand. You grow your business.",
+    culture:"Every LO here has a brand bigger than ours — and that's exactly how we want it. RocketPro's products give you the answer for every client. Your job is the relationship.",
+    hiring:["Loan Officers","LOAs","Processors"],
+    google:4.9, count:87,
+    review:"Best shop I've ever worked for. They fight for you, not just for the loan.",
+    pulse:["Helped our 3,000th family close this month. That number matters most to us.","Three LOs hit personal production records in Q1. We celebrate every single one.","First-time buyer seminar Saturday — 200 families showed up."],
+    aiComp:"Keep 80% of every deal you close. Zero desk fees, no minimums your first 90 days. Hit $4M in a month and unlock a $1,500 bonus. Full benefits at 60 days — and your book stays yours.",
+  },
+  {
+    id:2, name:"Horizon Home Lending", type:"Independent Broker",
+    location:"Phoenix, AZ", remote:"Remote", comp:"75 / 25 split",
+    volume:"$180M / yr", founded:"2015", bg:"#1A2E3D",
+    tagline:"Work where you want. Close when you're ready.",
+    culture:"Remote-first since day one. We hired the best people we could find, then trusted them to work the way they work best. RocketPro pricing means you always have a great answer.",
+    hiring:["Loan Officers","Processors"],
+    google:4.8, count:134,
+    review:"Finally a place that trusts me to do my job the way I know how.",
+    pulse:["Just crossed 1,000 families helped since we opened.","18 states on our team right now. Growing intentionally."],
+    aiComp:"75% split, fully remote. RocketPro pricing means competitive rates for every client, wherever you close.",
+  },
+  {
+    id:3, name:"Legacy Mortgage Group", type:"Independent Broker",
+    location:"Atlanta, GA", remote:"In-office", comp:"Salary + split",
+    volume:"$150M / yr", founded:"2012", bg:"#2C1A10",
+    tagline:"The better we serve you, the better you serve your clients.",
+    culture:"Twelve years in Atlanta helping families own their homes. Stability is a competitive advantage — for you and for your borrowers. Come in-office, be part of something built to last.",
+    hiring:["Loan Officers","LOAs","Admin"],
+    google:4.9, count:62,
+    review:"Been here 7 years. I've had every reason to leave and never once wanted to.",
+    pulse:["Team anniversary lunch — seven of us have been here over a decade.","Just helped our 500th Atlanta family close. This city is home to us."],
+    aiComp:"Base salary so you never have a zero month, plus a competitive split as you ramp. Full benefits from day one. Your book of business stays yours.",
+  },
+];
+
+const CANDIDATES = [
+  { id:"c1", alias:"Senior LO, Midwest",      role:"Loan Officer",    exp:"9 yrs",  volume:"$4.1M / mo", comp:"80%+ split", style:"Remote",    bio:"Built my book entirely on referrals. Looking for a shop that values relationships over transactions — and has the products to back it up.", skills:["Purchase","FHA","VA","Jumbo"], google:4.9, count:84, review:"Made buying our first home feel effortless.", nmls:"Verified" },
+  { id:"c2", alias:"Processor, Southeast",    role:"Processor",       exp:"6 yrs",  volume:"130 files/mo",comp:"Salary",     style:"Hybrid",    bio:"Detail-obsessed processor with FHA and VA experience. Love a fast-paced team where good work gets noticed.", skills:["FHA","VA","Conventional","Encompass"], google:4.8, count:44, review:"Most organized processor I've worked with in 20 years.", nmls:"N/A" },
+  { id:"c3", alias:"Branch Manager, Southwest",role:"Branch Manager", exp:"14 yrs", volume:"$22M/mo team",comp:"Override+split",style:"In-office",bio:"Built and led teams of 15+ LOs. My specialty is finding talented people and creating the environment where they stay.", skills:["Leadership","Recruiting","Purchase","Jumbo"], google:4.9, count:67, review:"My production doubled in year one under his management.", nmls:"Verified" },
+];
+
+const MSGS = [
+  { from:"them", text:"Hi — we loved your profile. Your referral-based approach is exactly what we look for.", time:"9:12 AM" },
+  { from:"me",   text:"Thank you. I've always believed the relationship is the product. Tell me more about how your team operates?", time:"9:18 AM" },
+  { from:"them", text:"We close on trust, not just rates. Would love to connect on a call this week.", time:"9:24 AM" },
+];
+
+const TIME_SLOTS = [
+  "Mon Jun 30 · 9:00 AM","Mon Jun 30 · 11:00 AM","Mon Jun 30 · 2:00 PM",
+  "Tue Jul 1 · 10:00 AM","Tue Jul 1 · 1:00 PM","Wed Jul 2 · 9:00 AM",
+];
+
+const NEWS = [
+  { source:"HousingWire",       time:"2h ago",  headline:"Broker channel hits record market share as purchase market rebounds",                  cat:"Market" },
+  { source:"NMP",               time:"4h ago",  headline:"RocketPro partners outpace retail LOs in purchase volume for third consecutive quarter", cat:"Industry" },
+  { source:"The Mortgage Note", time:"6h ago",  headline:"CFPB issues updated guidance on trigger leads — what broker shops need to know",        cat:"Regulation" },
+  { source:"MPA",               time:"9h ago",  headline:"Top LOs reveal the tools and lender relationships driving their 2024 numbers",          cat:"Technology" },
+  { source:"Scotsman Guide",    time:"1d ago",  headline:"Non-QM volume climbs as borrowers look beyond conventional financing options",           cat:"Products" },
+];
+
+const COMMUNITY_POSTS = [
+  { id:"p1", author:"LO · Dallas TX",       role:"Loan Officer, 11 yrs",  time:"1h ago",  cat:"Win",    text:"Just helped a teacher buy her first home after three years of saving. She cried. I cried. This is why we do this. Find the shop that lets you focus on moments like this.", likes:84,  replies:19, liked:false },
+  { id:"p2", author:"Branch Mgr · Phoenix", role:"Branch Manager, 14 yrs",time:"3h ago",  cat:"Career", text:"Broker market share just hit a record high. If you're still at a retail shop wondering why your pipeline is shrinking — the broker channel has better products, better comp, and your clients actually benefit. The math isn't close.", likes:61,  replies:23, liked:false },
+  { id:"p3", author:"Processor · Remote",   role:"Processor, 6 yrs",      time:"5h ago",  cat:"Advice", text:"For processors thinking about the broker channel — do it. The pace is faster, the culture is better, and when your shop uses RocketPro the technology actually makes your job easier.", likes:38,  replies:11, liked:false },
+  { id:"p4", author:"LO · Atlanta GA",      role:"Loan Officer, 8 yrs",   time:"1d ago",  cat:"Win",    text:"Ten-year anniversary at my shop this week. I've had every reason to leave and never once wanted to. Culture is not a perk — it is the whole thing. Find the right shop and everything else gets easier.", likes:112, replies:34, liked:false },
+];
+
+// All 50 US states for dropdowns
+const ALL_STATES = [
+  "Alabama","Alaska","Arizona","Arkansas","California","Colorado","Connecticut",
+  "Delaware","Florida","Georgia","Hawaii","Idaho","Illinois","Indiana","Iowa",
+  "Kansas","Kentucky","Louisiana","Maine","Maryland","Massachusetts","Michigan",
+  "Minnesota","Mississippi","Missouri","Montana","Nebraska","Nevada","New Hampshire",
+  "New Jersey","New Mexico","New York","North Carolina","North Dakota","Ohio",
+  "Oklahoma","Oregon","Pennsylvania","Rhode Island","South Carolina","South Dakota",
+  "Tennessee","Texas","Utah","Vermont","Virginia","Washington","West Virginia",
+  "Wisconsin","Wyoming"
+];
+
+// Post replies mock data
+const POST_REPLIES = {
+  "p1": [
+    { id:"r1", author:"Branch Mgr · Texas", role:"Branch Manager, 9 yrs", time:"45m ago", text:"This is what it's all about. Congratulations — moments like this are why we stay.", likes:12, liked:false },
+    { id:"r2", author:"LO · Phoenix AZ", role:"Loan Officer, 5 yrs", time:"30m ago", text:"I had a very similar moment last month. A single mom closing on her first home. She called her daughter from the closing table. I had to step out for a minute.", likes:28, liked:false },
+    { id:"r3", author:"Processor · Remote", role:"Processor, 7 yrs", time:"15m ago", text:"This is why the job matters. Not the rates or the pipelines. The people.", likes:9, liked:false },
+  ],
+  "p2": [
+    { id:"r4", author:"LO · Atlanta", role:"Loan Officer, 12 yrs", time:"2h ago", text:"Switched from retail two years ago and I will never go back. Better products, better culture, better comp. And my clients are happier.", likes:34, liked:false },
+    { id:"r5", author:"Branch Mgr · Chicago", role:"Branch Manager, 8 yrs", time:"1h ago", text:"The data does not lie. Broker market share keeps climbing because we can actually shop the rate for our clients.", likes:19, liked:false },
+  ],
+  "p3": [
+    { id:"r6", author:"Processor · Dallas", role:"Processor, 4 yrs", time:"4h ago", text:"Made the move 18 months ago and it was the best career decision I've made. The RocketPro tech stack alone is worth it.", likes:22, liked:false },
+    { id:"r7", author:"Underwriter · Remote", role:"Underwriter, 10 yrs", time:"3h ago", text:"Same experience here. The workflow is faster and the teams are smaller so you actually feel like your work matters.", likes:15, liked:false },
+  ],
+  "p4": [
+    { id:"r8", author:"LO · Nashville", role:"Loan Officer, 6 yrs", time:"22h ago", text:"Ten years at the same shop is rare. You clearly found the right place. That's the goal.", likes:41, liked:false },
+    { id:"r9", author:"Branch Mgr · Denver", role:"Branch Manager, 11 yrs", time:"20h ago", text:"Culture really is everything. I've seen great LOs leave great pay packages because the culture was wrong. And I've seen people take pay cuts to get to the right culture.", likes:38, liked:false },
+    { id:"r10", author:"LOA · Remote", role:"LOA, 3 yrs", time:"18h ago", text:"This is what I look for in Orbit. Not just comp. The culture signal is the most important card on the swipe.", likes:17, liked:false },
+  ],
+};
+
+
+// ─── SCHEDULE MODAL ───────────────────────────────────────────────────────────
+function ScheduleModal({ party, onClose, onConfirm }) {
+  const [selected, setSelected] = useState(null);
+  const [done, setDone] = useState(false);
+  const name = party?.alias || party?.name || "them";
+
+  const confirm = () => {
+    setDone(true);
+    if (onConfirm) onConfirm({ party, slot:selected });
+  };
+
+  if (done) return (
+    <div style={{ position:"fixed",inset:0,background:"rgba(17,17,16,.8)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:300,padding:24 }}>
+      <div style={{ background:C.white,borderRadius:8,padding:"40px 28px",maxWidth:340,width:"100%",textAlign:"center" }}>
+        <div style={{ width:56,height:56,borderRadius:"50%",background:C.greenSoft,border:`2px solid ${C.green}`,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 20px" }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M5 12L10 17L19 8" stroke={C.green} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+        </div>
+        <div style={{ ...T.display,fontSize:30,color:C.ink,marginBottom:8,lineHeight:1 }}>Confirmed.</div>
+        <p style={{ ...T.body,fontSize:14,color:C.body,lineHeight:1.65,marginBottom:8 }}>
+          Your call with <strong>{name}</strong> is set for<br/><strong>{selected}</strong>.
+        </p>
+        <p style={{ ...T.caption,fontSize:12,color:C.muted,marginBottom:28 }}>A Zoom link has been sent to both of you.</p>
+        <Btn v="red" onClick={onClose}>Done</Btn>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ position:"fixed",inset:0,background:"rgba(17,17,16,.8)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:300 }}>
+      <div style={{ background:C.white,borderRadius:"12px 12px 0 0",padding:"28px 24px 48px",width:"100%",maxWidth:420,maxHeight:"85vh",overflowY:"auto" }}>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
+          <div style={{ ...T.heading,fontSize:20,color:C.ink }}>Schedule a call</div>
+          <button onClick={onClose} style={{ background:"none",border:"none",color:C.muted,fontSize:24,cursor:"pointer",lineHeight:1 }}>×</button>
+        </div>
+        <p style={{ ...T.body,fontSize:14,color:C.body,marginBottom:24 }}>
+          Pick a time. <strong>{name}</strong> gets a calendar invite and Zoom link automatically.
+        </p>
+        <Lbl>Available times</Lbl>
+        <div style={{ marginBottom:24 }}>
+          {TIME_SLOTS.map(slot => (
+            <div key={slot} onClick={()=>setSelected(slot)} style={{ padding:"15px 0",borderBottom:`1px solid ${C.rule}`,display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer" }}>
+              <span style={{ ...T.body,fontSize:15,color:selected===slot?C.red:C.ink,fontWeight:selected===slot?600:400 }}>{slot}</span>
+              {selected===slot && <span style={{ color:C.red,fontSize:16 }}>✓</span>}
+            </div>
+          ))}
+        </div>
+        <Btn v="red" onClick={confirm} disabled={!selected}>Confirm and send Zoom invite</Btn>
+      </div>
+    </div>
+  );
+}
+
+// ─── CHAT SCREEN ─────────────────────────────────────────────────────────────
+function ChatScreen({ party, onBack, onSchedule, isCompany }) {
+  const [messages, setMessages] = useState(MSGS);
+  const [input, setInput] = useState("");
+  const bottomRef = useRef();
+  useEffect(()=>{ bottomRef.current?.scrollIntoView({ behavior:"smooth" }); },[messages]);
+  const send = () => {
+    if (!input.trim()) return;
+    setMessages(m=>[...m,{ from:"me",text:input.trim(),time:"Now" }]);
+    setInput("");
+  };
+  const name = isCompany ? (party.alias||party.role) : party.name;
+
+  return (
+    <div style={{ display:"flex",flexDirection:"column",height:"100vh",maxWidth:420,margin:"0 auto",background:C.off }}>
+      {/* Header */}
+      <div style={{ background:C.white,padding:"52px 20px 14px",display:"flex",alignItems:"center",gap:14,borderBottom:`1px solid ${C.rule}` }}>
+        <button onClick={onBack} style={{ background:"none",border:"none",color:C.red,fontSize:22,cursor:"pointer",lineHeight:1,padding:"0 4px" }}>←</button>
+        <div style={{ flex:1 }}>
+          <div style={{ ...T.heading,fontSize:16,color:C.ink }}>{name}</div>
+          <div style={{ ...T.label,fontSize:9,color:C.green,marginTop:2 }}>Online now</div>
+        </div>
+        <button onClick={()=>onSchedule(party)} style={{ background:"none",border:`1px solid ${C.rule}`,borderRadius:4,padding:"8px 14px",...T.label,fontSize:9,color:C.ink,cursor:"pointer" }}>Schedule</button>
+        <button onClick={onBack} style={{ background:"none",border:"none",...T.label,fontSize:9,color:C.ghost,cursor:"pointer",padding:"8px 4px" }}>✕ End</button>
+      </div>
+
+      {/* Messages */}
+      <div style={{ flex:1,overflowY:"auto",padding:"20px 16px",display:"flex",flexDirection:"column",gap:12 }}>
+        <div style={{ textAlign:"center",...T.label,fontSize:9,color:C.muted,marginBottom:4 }}>Today · Matched on Orbit</div>
+        {messages.map((msg,i)=>(
+          <div key={i} style={{ display:"flex",justifyContent:msg.from==="me"?"flex-end":"flex-start" }}>
+            <div style={{ maxWidth:"78%" }}>
+              <div style={{
+                padding:"12px 16px",
+                background:msg.from==="me"?C.red:C.white,
+                color:msg.from==="me"?C.white:C.ink,
+                borderRadius:msg.from==="me"?"16px 16px 2px 16px":"16px 16px 16px 2px",
+                ...T.body,fontSize:14,lineHeight:1.5,
+                boxShadow:msg.from==="me"?"none":"0 1px 6px rgba(0,0,0,.06)",
+              }}>{msg.text}</div>
+              <div style={{ ...T.caption,fontSize:10,color:C.muted,marginTop:4,textAlign:msg.from==="me"?"right":"left" }}>{msg.time}</div>
+            </div>
+          </div>
+        ))}
+        <div ref={bottomRef}/>
+      </div>
+
+      {/* Input */}
+      <div style={{ padding:"12px 16px 32px",background:C.white,borderTop:`1px solid ${C.rule}`,display:"flex",gap:10,alignItems:"flex-end" }}>
+        <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="Type a message…"
+          style={{ flex:1,padding:"12px 0",background:"transparent",border:"none",borderBottom:`1px solid ${C.rule}`,...T.body,fontSize:14,color:C.ink,outline:"none" }}/>
+        <button onClick={send} style={{ width:42,height:42,borderRadius:"50%",background:input.trim()?C.red:C.rule,border:"none",color:C.white,fontSize:16,flexShrink:0,cursor:"pointer",transition:"background .2s" }}>↑</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── SWIPE CARD ───────────────────────────────────────────────────────────────
+function CompanyCard({ co, onSwipe, isTop, offset=0 }) {
+  const [dragX, setDragX] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const [tab, setTab] = useState("story");
+  const startX = useRef(0);
+
+  const dn = x => { setDragging(true); startX.current=x; };
+  const mv = x => { if(dragging) setDragX(x-startX.current); };
+  const up = () => {
+    if(!dragging) return; setDragging(false);
+    if(dragX>80) onSwipe("right");
+    else if(dragX<-80) onSwipe("left");
+    else setDragX(0);
+  };
+
+  return (
+    <div
+      onMouseDown={e=>dn(e.clientX)} onMouseMove={e=>mv(e.clientX)} onMouseUp={up} onMouseLeave={up}
+      onTouchStart={e=>dn(e.touches[0].clientX)} onTouchMove={e=>mv(e.touches[0].clientX)} onTouchEnd={up}
+      style={{
+        position:"absolute", inset:0,
+        transform:`translateX(${isTop?dragX:0}px) rotate(${isTop?dragX*.024:0}deg) scale(${isTop?1:0.97}) translateY(${offset}px)`,
+        transition:dragging?"none":"transform .32s cubic-bezier(.34,1.56,.64,1)",
+        cursor:isTop?"grab":"default", userSelect:"none",
+        zIndex:isTop?10:5,
+      }}
+    >
+      {isTop&&dragX>35 && <div style={{ position:"absolute",top:18,left:16,zIndex:20,background:C.white,border:`2px solid ${C.green}`,color:C.green,padding:"5px 16px",borderRadius:4,...T.label,fontSize:12,opacity:Math.min(dragX/80,1) }}>Interested</div>}
+      {isTop&&dragX<-35 && <div style={{ position:"absolute",top:18,right:16,zIndex:20,background:C.white,border:`2px solid ${C.ghost}`,color:C.muted,padding:"5px 16px",borderRadius:4,...T.label,fontSize:12,opacity:Math.min(-dragX/80,1) }}>Pass</div>}
+
+      <div style={{ height:"100%",background:C.white,borderRadius:8,boxShadow:"0 4px 24px rgba(0,0,0,.1)",overflow:"hidden",display:"flex",flexDirection:"column",border:`1px solid ${C.rule}` }}>
+        {/* Dark header — company's Partner Promise is the headline */}
+        <div style={{ background:co.bg,padding:"28px 20px 20px",flexShrink:0,minHeight:185,display:"flex",flexDirection:"column",justifyContent:"flex-end" }}>
+          <div style={{ ...T.label,fontSize:8,color:"rgba(255,255,255,.3)",marginBottom:10 }}>{co.type.toUpperCase()} · {co.location.toUpperCase()}</div>
+          <div style={{ ...T.display,fontSize:24,color:C.white,lineHeight:1,marginBottom:10 }}>"{co.tagline}"</div>
+          <div style={{ display:"flex",gap:8,alignItems:"center",flexWrap:"wrap" }}>
+            <div style={{ ...T.label,fontSize:8,color:"rgba(255,255,255,.38)" }}>{co.name}</div>
+            <div style={{ width:2,height:2,borderRadius:"50%",background:"rgba(255,255,255,.2)" }}/>
+            <div style={{ background:"rgba(232,37,26,.2)",border:"1px solid rgba(232,37,26,.35)",color:"rgba(255,255,255,.8)",padding:"3px 9px",borderRadius:20,...T.label,fontSize:7 }}>RocketPro Partner</div>
+          </div>
+          <div style={{ display:"flex",gap:5,marginTop:12 }}>
+            {co.hiring.map(r=><div key={r} style={{ border:"1px solid rgba(255,255,255,.15)",color:"rgba(255,255,255,.55)",padding:"3px 9px",borderRadius:20,...T.label,fontSize:7 }}>{r}</div>)}
+          </div>
+        </div>
+
+        {/* Tab strip */}
+        <div style={{ display:"flex",borderBottom:`1px solid ${C.rule}`,flexShrink:0 }}>
+          {[{id:"story",label:"Story"},{id:"comp",label:"Comp"},{id:"pulse",label:"Culture"}].map(t=>(
+            <button key={t.id} onClick={e=>{e.stopPropagation();setTab(t.id);}} style={{ flex:1,padding:"11px 3px",background:"none",border:"none",cursor:"pointer",...T.label,fontSize:8,color:tab===t.id?C.ink:C.muted,borderBottom:tab===t.id?`2px solid ${C.red}`:"2px solid transparent" }}>{t.label}</button>
+          ))}
+        </div>
+
+        {/* Tab content */}
+        <div style={{ flex:1,overflowY:"auto",padding:"16px 20px",display:"flex",flexDirection:"column",gap:14 }}>
+          {tab==="story" && <>
+            <div>
+              <Lbl>What their clients say</Lbl>
+              <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:10 }}>
+                <span style={{ ...T.label,fontSize:9,color:C.muted,minWidth:88 }}>Google</span>
+                <span style={{ color:"#F59E0B",fontSize:12 }}>{"★".repeat(Math.round(co.google))}</span>
+                <span style={{ ...T.subhead,fontSize:12,color:C.ink }}>{co.google}</span>
+                <span style={{ ...T.caption,fontSize:11,color:C.muted }}>({co.count})</span>
+              </div>
+              <div style={{ paddingLeft:12,borderLeft:`2px solid ${C.redMid}` }}>
+                <p style={{ ...T.body,fontSize:12,color:C.body,fontStyle:"italic" }}>"{co.review}"</p>
+              </div>
+            </div>
+            <Rule/>
+            <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:14 }}>
+              {[["Comp",co.comp],["Volume",co.volume],["Style",co.remote],["Est.",co.founded]].map(([l,v])=>(
+                <div key={l}><Lbl>{l}</Lbl><div style={{ ...T.subhead,fontSize:13,color:C.ink }}>{v}</div></div>
+              ))}
+            </div>
+            <Rule/>
+            <p style={{ ...T.body,fontSize:13,color:C.body }}>{co.culture}</p>
+          </>}
+
+          {tab==="comp" && <>
+            <div style={{ background:co.bg,padding:"16px",margin:"-16px -20px 0" }}>
+              <Lbl>AI Comp Summary</Lbl>
+              <p style={{ ...T.body,fontSize:13,color:C.white,lineHeight:1.65 }}>{co.aiComp}</p>
+            </div>
+            <div><Lbl>Split</Lbl><div style={{ ...T.display,fontSize:32,color:C.ink }}>{co.comp}</div></div>
+            <Rule/>
+            <div><Lbl>Annual Volume</Lbl><div style={{ ...T.subhead,fontSize:16,color:C.ink }}>{co.volume}</div></div>
+            <Rule/>
+            <div style={{ background:C.redSoft,borderRadius:4,padding:"12px 14px",border:`1px solid ${C.redMid}` }}>
+              <div style={{ ...T.label,fontSize:8,color:C.red,marginBottom:4 }}>Partner Promise #3</div>
+              <p style={{ ...T.body,fontSize:13,color:C.body }}>"Full pricing transparency. No surprises." Full comp agreement shared after a mutual match.</p>
+            </div>
+          </>}
+
+          {tab==="pulse" && <>
+            <Lbl>AI Culture Pulse · Last 90 days</Lbl>
+            <p style={{ ...T.caption,fontSize:12,color:C.muted,marginBottom:10 }}>Scanned from their public social presence.</p>
+            {co.pulse.map((p,i)=>(
+              <div key={i} style={{ paddingLeft:12,borderLeft:`2px solid ${i===0?C.red:C.rule}`,marginBottom:14 }}>
+                <p style={{ ...T.body,fontSize:13,color:C.body }}>{p}</p>
+              </div>
+            ))}
+            <div style={{ height:1,background:C.rule,marginBottom:14 }}/>
+            {/* Photo gallery */}
+            <Lbl>Photos</Lbl>
+            <div style={{ display:"flex",gap:8,marginBottom:16,overflowX:"auto" }}>
+              {["🏢","🤝","🎉","🏡"].map((emoji,i)=>(
+                <div key={i} style={{ width:88,height:72,flexShrink:0,borderRadius:6,background:i===0?co.bg:C.warm,border:`1px solid ${C.rule}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:28 }}>{emoji}</div>
+              ))}
+            </div>
+            {/* Social links */}
+            <Lbl>Social Profiles</Lbl>
+            <div style={{ display:"flex",gap:8,flexWrap:"wrap" }}>
+              {[{label:"LinkedIn",icon:"in",handle:"@summitmortgage"},{label:"Instagram",icon:"ig",handle:"@summitmtg"},{label:"Facebook",icon:"fb",handle:"Summit Mortgage"}].map(s=>(
+                <div key={s.label} style={{ display:"flex",alignItems:"center",gap:6,background:C.warm,border:`1px solid ${C.rule}`,borderRadius:4,padding:"7px 12px",cursor:"pointer" }}>
+                  <div style={{ width:20,height:20,borderRadius:4,background:C.ink,display:"flex",alignItems:"center",justifyContent:"center" }}>
+                    <div style={{ ...T.label,fontSize:8,color:C.white }}>{s.icon.toUpperCase()}</div>
+                  </div>
+                  <div style={{ ...T.body,fontSize:12,color:C.body }}>{s.handle}</div>
+                </div>
+              ))}
+            </div>
+          </>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── CANDIDATE CARD ───────────────────────────────────────────────────────────
+function CandidateCard({ c, onSwipe, isTop }) {
+  const [dragX, setDragX] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const startX = useRef(0);
+  const dn = x => { setDragging(true); startX.current=x; };
+  const mv = x => { if(dragging) setDragX(x-startX.current); };
+  const up = () => {
+    if(!dragging) return; setDragging(false);
+    if(dragX>80) onSwipe("right",c);
+    else if(dragX<-80) onSwipe("left",c);
+    else setDragX(0);
+  };
+
+  return (
+    <div
+      onMouseDown={e=>dn(e.clientX)} onMouseMove={e=>mv(e.clientX)} onMouseUp={up} onMouseLeave={up}
+      onTouchStart={e=>dn(e.touches[0].clientX)} onTouchMove={e=>mv(e.touches[0].clientX)} onTouchEnd={up}
+      style={{
+        position:"absolute",inset:0,
+        transform:`translateX(${isTop?dragX:0}px) rotate(${isTop?dragX*.024:0}deg) scale(${isTop?1:0.97})`,
+        transition:dragging?"none":"transform .32s cubic-bezier(.34,1.56,.64,1)",
+        cursor:isTop?"grab":"default",userSelect:"none",zIndex:isTop?10:5,
+      }}
+    >
+      {isTop&&dragX>35 && <div style={{ position:"absolute",top:18,left:16,zIndex:20,background:C.white,border:`2px solid ${C.green}`,color:C.green,padding:"5px 16px",borderRadius:4,...T.label,fontSize:12,opacity:Math.min(dragX/80,1) }}>Interested</div>}
+      {isTop&&dragX<-35 && <div style={{ position:"absolute",top:18,right:16,zIndex:20,background:C.white,border:`2px solid ${C.ghost}`,color:C.muted,padding:"5px 16px",borderRadius:4,...T.label,fontSize:12,opacity:Math.min(-dragX/80,1) }}>Pass</div>}
+
+      <div style={{ height:"100%",background:C.white,borderRadius:8,boxShadow:"0 4px 24px rgba(0,0,0,.1)",overflow:"hidden",display:"flex",flexDirection:"column",border:`1px solid ${C.rule}` }}>
+        <div style={{ background:C.ink,padding:"28px 20px 20px",flexShrink:0,minHeight:175 }}>
+          <div style={{ ...T.label,fontSize:8,color:"rgba(255,255,255,.3)",marginBottom:10 }}>{c.role.toUpperCase()} · {c.style.toUpperCase()}</div>
+          <div style={{ ...T.display,fontSize:28,color:C.white,lineHeight:.95,marginBottom:14 }}>{c.alias}</div>
+          <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12 }}>
+            {[["Volume",c.volume],["Exp",c.exp],["NMLS",c.nmls]].map(([l,v])=>(
+              <div key={l}>
+                <div style={{ ...T.label,fontSize:8,color:"rgba(255,255,255,.32)",marginBottom:2 }}>{l}</div>
+                <div style={{ ...T.subhead,fontSize:12,color:l==="NMLS"&&v==="Verified"?"#5CFFA1":C.white }}>{v}{l==="NMLS"&&v==="Verified"?" ✓":""}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{ flex:1,overflowY:"auto",padding:"16px 20px",display:"flex",flexDirection:"column",gap:14 }}>
+          <div><Lbl>Their story</Lbl><p style={{ ...T.body,fontSize:13,color:C.body }}>{c.bio}</p></div>
+          <Rule/>
+          <div>
+            <Lbl>Client reviews</Lbl>
+            <div style={{ display:"flex",alignItems:"center",gap:8,marginBottom:8 }}>
+              <span style={{ ...T.label,fontSize:9,color:C.muted,minWidth:88 }}>Google</span>
+              <span style={{ color:"#F59E0B",fontSize:12 }}>{"★".repeat(Math.round(c.google))}</span>
+              <span style={{ ...T.subhead,fontSize:12,color:C.ink }}>{c.google}</span>
+              <span style={{ ...T.caption,fontSize:11,color:C.muted }}>({c.count})</span>
+            </div>
+            <div style={{ paddingLeft:12,borderLeft:`2px solid ${C.redMid}` }}>
+              <p style={{ ...T.body,fontSize:12,color:C.body,fontStyle:"italic" }}>"{c.review}"</p>
+            </div>
+          </div>
+          <Rule/>
+          <div>
+            <Lbl>Specialties</Lbl>
+            <div style={{ display:"flex",flexWrap:"wrap",gap:6 }}>
+              {c.skills.map(s=><div key={s} style={{ border:`1px solid ${C.rule}`,padding:"4px 10px",borderRadius:20,...T.label,fontSize:8,color:C.body }}>{s}</div>)}
+            </div>
+          </div>
+          <Rule/>
+          <div style={{ background:C.warm,borderRadius:4,padding:"12px 14px",border:`1px solid ${C.rule}` }}>
+            <div style={{ ...T.label,fontSize:8,color:C.muted,marginBottom:4 }}>Anonymity Mode Active</div>
+            <p style={{ ...T.caption,fontSize:12,color:C.muted }}>Name, employer, and LinkedIn revealed after a mutual match.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── MATCH MODAL ──────────────────────────────────────────────────────────────
+function MatchModal({ party, onChat, onSchedule, onClose, isCompany, locked, onUpgrade }) {
+  const name = isCompany ? (party.alias||party.role) : party.name;
+
+  if (locked) return (
+    <div style={{ position:"fixed",inset:0,background:"rgba(17,17,16,.82)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200 }}>
+      <div style={{ background:C.white,borderRadius:"12px 12px 0 0",padding:"32px 24px 48px",width:"100%",maxWidth:420 }}>
+        <div style={{ ...T.label,fontSize:10,color:C.red,marginBottom:12 }}>New Interest</div>
+        <div style={{ ...T.display,fontSize:32,color:C.ink,lineHeight:.95,marginBottom:10 }}>Someone's<br/>interested.</div>
+        <p style={{ ...T.body,fontSize:14,color:C.body,lineHeight:1.65,marginBottom:28 }}>
+          <strong>{name}</strong> just expressed interest in your company. A RocketPro partnership is required to connect.
+        </p>
+        <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+          <a href="https://www.rocketpro.com" style={{ textDecoration:"none",display:"block" }}>
+            <Btn v="red">Become a RocketPro partner →</Btn>
+          </a>
+          <Btn v="ghost" onClick={()=>{ onClose(); }}>Maybe later</Btn>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ position:"fixed",inset:0,background:"rgba(17,17,16,.82)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:200,padding:24 }}>
+      <div style={{ background:C.white,borderRadius:8,padding:"40px 28px",maxWidth:340,width:"100%",textAlign:"center" }}>
+        <svg width="60" height="60" viewBox="0 0 60 60" fill="none" style={{ marginBottom:16 }}>
+          <circle cx="30" cy="30" r="9" fill={C.red}/>
+          <circle cx="30" cy="30" r="28" stroke={C.red} strokeWidth="2" fill="none"/>
+          <ellipse cx="30" cy="30" rx="28" ry="9.5" stroke={C.red} strokeWidth="1.5" fill="none" opacity=".3" transform="rotate(-38 30 30)" strokeDasharray="7 4"/>
+        </svg>
+        <div style={{ ...T.label,fontSize:10,color:C.red,marginBottom:10 }}>Match on Orbit</div>
+        <div style={{ ...T.display,fontSize:36,color:C.ink,lineHeight:.95,marginBottom:12 }}>It's a match.</div>
+        <p style={{ ...T.body,fontSize:14,color:C.body,lineHeight:1.65,marginBottom:6 }}>
+          <strong style={{ color:C.ink }}>{name}</strong> {isCompany?"is interested in your roles.":"is interested in your profile."}
+        </p>
+        <p style={{ ...T.caption,fontSize:12,color:C.muted,marginBottom:28 }}>Your identity stays private until you're ready.</p>
+        <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+          <Btn v="red" onClick={()=>onChat(party)}>Start a conversation</Btn>
+          <Btn v="outline" onClick={()=>onSchedule(party)}>Schedule an intro call</Btn>
+          <button onClick={onClose} style={{ background:"none",border:"none",...T.caption,fontSize:13,color:C.ghost,padding:8,cursor:"pointer" }}>Keep browsing</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ─── SIGN IN SCREEN ──────────────────────────────────────────────────────────
+function SignInScreen({ onBack, onSignedInLO, onSignedInCompany, onSignedInPinnacle }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [showPass, setShowPass] = useState(false);
+
+  const submit = () => {
+    if (!email.trim() || !password.trim()) { setError("Please enter your email and password."); return; }
+    setLoading(true); setError("");
+    setTimeout(() => {
+      setLoading(false);
+      // Demo routing based on email
+      if (email.includes("pinnacle") || email.includes("3030")) onSignedInPinnacle();
+      else if (email.includes("company") || email.includes("broker")) onSignedInCompany();
+      else onSignedInLO();
+    }, 1600);
+  };
+
+  return (
+    <div style={{ minHeight:"100vh", background:C.white, padding:"52px 28px 48px", display:"flex", flexDirection:"column" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:48 }}>
+        <button onClick={onBack} style={{ background:"none", border:"none", color:C.red, fontSize:22, cursor:"pointer", lineHeight:1 }}>&#8592;</button>
+        <Logo size="sm"/>
+      </div>
+      <div style={{ ...T.label, fontSize:10, color:C.red, marginBottom:14 }}>Welcome back</div>
+      <div style={{ ...T.display, fontSize:40, color:C.ink, lineHeight:.92, marginBottom:12 }}>Sign in to<br/>Orbit.</div>
+      <p style={{ ...T.body, fontSize:14, color:C.body, lineHeight:1.7, marginBottom:40 }}>
+        Enter your email and password to pick up where you left off.
+      </p>
+
+      <div style={{ display:"flex", flexDirection:"column", gap:24, marginBottom:8 }}>
+        <div>
+          <Lbl>Email address</Lbl>
+          <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com" type="email"
+            style={{ width:"100%", background:"transparent", border:"none", outline:"none", borderBottom:`2px solid ${email?C.red:C.rule}`, ...T.body, fontSize:18, color:C.ink, padding:"8px 0", boxSizing:"border-box" }}/>
+        </div>
+        <div>
+          <Lbl>Password</Lbl>
+          <div style={{ display:"flex", alignItems:"center", borderBottom:`2px solid ${password?C.red:C.rule}` }}>
+            <input value={password} onChange={e=>setPassword(e.target.value)} placeholder="••••••••" type={showPass?"text":"password"}
+              onKeyDown={e=>e.key==="Enter"&&submit()}
+              style={{ flex:1, background:"transparent", border:"none", outline:"none", ...T.body, fontSize:18, color:C.ink, padding:"8px 0", boxSizing:"border-box" }}/>
+            <button onClick={()=>setShowPass(s=>!s)} style={{ background:"none", border:"none", ...T.label, fontSize:9, color:C.muted, cursor:"pointer", flexShrink:0 }}>{showPass?"Hide":"Show"}</button>
+          </div>
+        </div>
+      </div>
+
+      {error && <div style={{ ...T.body, fontSize:13, color:C.red, marginBottom:12, paddingTop:4 }}>{error}</div>}
+
+      <div style={{ marginBottom:14 }}>
+        <button style={{ background:"none", border:"none", ...T.label, fontSize:10, color:C.red, cursor:"pointer", padding:0 }}>
+          Forgot password?
+        </button>
+      </div>
+
+      {loading ? (
+        <div style={{ padding:"20px 0", textAlign:"center" }}>
+          <div style={{ display:"flex", justifyContent:"center", gap:8, marginBottom:10 }}>
+            {[0,1,2].map(i=><div key={i} style={{ width:9, height:9, borderRadius:"50%", background:C.red, opacity:0.2+i*0.4 }}/>)}
+          </div>
+          <div style={{ ...T.label, fontSize:9, color:C.muted }}>Signing you in...</div>
+        </div>
+      ) : (
+        <Btn v="red" onClick={submit} disabled={!email.trim()||!password.trim()}>Sign in</Btn>
+      )}
+
+      <div style={{ marginTop:20, textAlign:"center" }}>
+        <div style={{ ...T.body, fontSize:14, color:C.muted }}>
+          New to Orbit?{" "}
+          <button onClick={onBack} style={{ background:"none", border:"none", ...T.subhead, fontSize:14, color:C.red, cursor:"pointer", padding:0 }}>
+            Create an account
+          </button>
+        </div>
+      </div>
+
+      {/* Demo hint */}
+      <div style={{ marginTop:28, padding:"14px 16px", background:C.warm, borderRadius:6, border:`1px solid ${C.rule}` }}>
+        <div style={{ ...T.label, fontSize:8, color:C.muted, marginBottom:6 }}>Demo Login Hints</div>
+        <div style={{ ...T.caption, fontSize:11, color:C.muted, lineHeight:1.6 }}>
+          Any email with "company" → company app<br/>
+          Any email with "pinnacle" → Pinnacle experience<br/>
+          Anything else → LO experience
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── STATE MULTISELECT DROPDOWN ───────────────────────────────────────────────
+function StateDropdown({ selected, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const filtered = ALL_STATES.filter(s => s.toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div style={{ position:"relative" }}>
+      {/* Trigger */}
+      <div onClick={()=>setOpen(o=>!o)} style={{ borderBottom:`2px solid ${selected.length?C.red:C.rule}`, padding:"10px 0", cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+        <div style={{ ...T.body, fontSize:14, color:selected.length?C.ink:C.ghost }}>
+          {selected.length === 0 ? "Select states..." : selected.length === 1 ? selected[0] : `${selected.length} states selected`}
+        </div>
+        <div style={{ ...T.label, fontSize:10, color:C.muted }}>{open ? "▲" : "▼"}</div>
+      </div>
+
+      {/* Selected tags */}
+      {selected.length > 0 && (
+        <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginTop:10, marginBottom:4 }}>
+          {selected.map(s=>(
+            <div key={s} style={{ display:"flex", alignItems:"center", gap:5, background:C.navy, borderRadius:20, padding:"3px 10px" }}>
+              <div style={{ ...T.label, fontSize:8, color:C.white }}>{s}</div>
+              <button onClick={e=>{e.stopPropagation();onChange(selected.filter(x=>x!==s));}} style={{ background:"none", border:"none", color:"rgba(255,255,255,.6)", fontSize:12, cursor:"pointer", lineHeight:1, padding:0 }}>×</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Dropdown */}
+      {open && (
+        <div style={{ position:"fixed", top:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:420, height:"100vh", background:"rgba(17,17,16,.6)", zIndex:300, display:"flex", flexDirection:"column", justifyContent:"flex-end" }}>
+          <div style={{ background:C.white, borderRadius:"12px 12px 0 0", padding:"20px 0 48px", maxHeight:"70vh", display:"flex", flexDirection:"column" }}>
+            {/* Header */}
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"0 20px 16px", borderBottom:`1px solid ${C.rule}` }}>
+              <div style={{ ...T.heading, fontSize:18, color:C.ink }}>Select States</div>
+              <button onClick={()=>setOpen(false)} style={{ background:"none", border:"none", color:C.muted, fontSize:22, cursor:"pointer" }}>×</button>
+            </div>
+            {/* Search */}
+            <div style={{ padding:"12px 20px", borderBottom:`1px solid ${C.rule}` }}>
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search states..."
+                style={{ width:"100%", padding:"10px 14px", background:C.warm, border:`1px solid ${C.rule}`, borderRadius:4, ...T.body, fontSize:14, color:C.ink, outline:"none", boxSizing:"border-box" }} autoFocus/>
+            </div>
+            {/* Quick selects */}
+            <div style={{ padding:"10px 20px", borderBottom:`1px solid ${C.rule}`, display:"flex", gap:8 }}>
+              <button onClick={()=>onChange(ALL_STATES)} style={{ padding:"5px 12px", background:C.ink, color:C.white, border:"none", borderRadius:20, ...T.label, fontSize:8, cursor:"pointer" }}>All 50</button>
+              <button onClick={()=>onChange([])} style={{ padding:"5px 12px", background:"transparent", color:C.muted, border:`1px solid ${C.rule}`, borderRadius:20, ...T.label, fontSize:8, cursor:"pointer" }}>Clear all</button>
+              <div style={{ ...T.label, fontSize:8, color:C.muted, display:"flex", alignItems:"center" }}>{selected.length} selected</div>
+            </div>
+            {/* List */}
+            <div style={{ overflowY:"auto", flex:1 }}>
+              {filtered.map(state => {
+                const isSel = selected.includes(state);
+                return (
+                  <div key={state} onClick={()=>onChange(isSel?selected.filter(x=>x!==state):[...selected,state])}
+                    style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 20px", borderBottom:`1px solid ${C.rule}`, cursor:"pointer", background:isSel?C.redSoft:C.white }}>
+                    <div style={{ ...T.body, fontSize:15, color:isSel?C.red:C.ink }}>{state}</div>
+                    {isSel && <div style={{ color:C.red, fontSize:16 }}>&#10003;</div>}
+                  </div>
+                );
+              })}
+            </div>
+            {/* Done */}
+            <div style={{ padding:"12px 20px 0", borderTop:`1px solid ${C.rule}` }}>
+              <Btn v="red" onClick={()=>setOpen(false)}>Done — {selected.length} state{selected.length!==1?"s":""} selected</Btn>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── POST DETAIL SCREEN ───────────────────────────────────────────────────────
+function PostDetailScreen({ post, onBack, isCompany }) {
+  const [replies, setReplies] = useState(POST_REPLIES[post.id] || []);
+  const [liked, setLiked] = useState(post.liked);
+  const [likes, setLikes] = useState(post.likes);
+  const [newReply, setNewReply] = useState("");
+  const [replyLikes, setReplyLikes] = useState({});
+  const bottomRef = useRef();
+
+  const toggleReplyLike = id => {
+    setReplyLikes(prev => {
+      const wasLiked = prev[id];
+      return { ...prev, [id]: !wasLiked };
+    });
+    setReplies(prev => prev.map(r => r.id===id ? { ...r, likes: replyLikes[id] ? r.likes-1 : r.likes+1 } : r));
+  };
+
+  const submitReply = () => {
+    if (!newReply.trim()) return;
+    const newR = {
+      id: "nr-"+Date.now(),
+      author: isCompany ? "Branch Mgr · Dallas" : "Senior LO, Midwest",
+      role: isCompany ? "Branch Manager, 9 yrs" : "LO, 7 yrs",
+      time: "Just now",
+      text: newReply.trim(),
+      likes: 0,
+      liked: false,
+    };
+    setReplies(prev => [...prev, newR]);
+    setNewReply("");
+    setTimeout(() => bottomRef.current?.scrollIntoView({ behavior:"smooth" }), 100);
+  };
+
+  const catColor = post.cat==="Win"?C.red:post.cat==="Advice"?C.green:C.muted;
+  const catBg    = post.cat==="Win"?C.redSoft:post.cat==="Advice"?C.greenSoft:C.warm;
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", height:"100vh", background:C.white }}>
+      {/* Header */}
+      <div style={{ background:C.white, padding:"52px 24px 14px", display:"flex", alignItems:"center", gap:14, borderBottom:`1px solid ${C.rule}`, flexShrink:0 }}>
+        <button onClick={onBack} style={{ background:"none", border:"none", color:C.red, fontSize:22, cursor:"pointer", lineHeight:1 }}>&#8592;</button>
+        <div style={{ ...T.heading, fontSize:16, color:C.ink, flex:1 }}>Post</div>
+        <div style={{ ...T.label, fontSize:8, color:catColor, background:catBg, padding:"3px 9px", borderRadius:20 }}>{post.cat.toUpperCase()}</div>
+      </div>
+
+      {/* Scrollable content */}
+      <div style={{ flex:1, overflowY:"auto", padding:"0 24px" }}>
+        {/* Original post */}
+        <div style={{ padding:"20px 0", borderBottom:`1px solid ${C.rule}` }}>
+          <div style={{ display:"flex", gap:12, alignItems:"flex-start", marginBottom:14 }}>
+            <div style={{ width:40, height:40, borderRadius:"50%", background:C.fog, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+              <div style={{ ...T.label, fontSize:12, color:C.body }}>{post.author.split(" ")[0][0]}{post.author.split("·")[1]?.trim()[0]||"L"}</div>
+            </div>
+            <div>
+              <div style={{ ...T.subhead, fontSize:14, color:C.ink }}>{post.author}</div>
+              <div style={{ ...T.caption, fontSize:11, color:C.muted }}>{post.role} · {post.time}</div>
+            </div>
+          </div>
+          <p style={{ ...T.body, fontSize:15, color:C.body, lineHeight:1.7, marginBottom:16 }}>{post.text}</p>
+          <div style={{ display:"flex", alignItems:"center", gap:20 }}>
+            <button onClick={()=>{setLiked(l=>!l);setLikes(n=>liked?n-1:n+1);}} style={{ background:"none", border:"none", display:"flex", alignItems:"center", gap:6, padding:0, cursor:"pointer" }}>
+              <span style={{ fontSize:18, color:liked?C.red:C.ghost }}>{liked?"♥":"♡"}</span>
+              <span style={{ ...T.label, fontSize:9, color:liked?C.red:C.muted }}>{likes}</span>
+            </button>
+            <span style={{ ...T.label, fontSize:9, color:C.muted }}>{replies.length} {replies.length===1?"reply":"replies"}</span>
+          </div>
+        </div>
+
+        {/* Replies */}
+        {replies.length > 0 && (
+          <div>
+            <div style={{ ...T.label, fontSize:9, color:C.muted, padding:"16px 0 4px" }}>Replies</div>
+            {replies.map((r,i) => (
+              <div key={r.id} style={{ padding:"16px 0", borderBottom:i<replies.length-1?`1px solid ${C.rule}`:"none" }}>
+                <div style={{ display:"flex", gap:10, alignItems:"flex-start", marginBottom:10 }}>
+                  <div style={{ width:34, height:34, borderRadius:"50%", background:C.fog, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                    <div style={{ ...T.label, fontSize:10, color:C.body }}>{r.author[0]}</div>
+                  </div>
+                  <div>
+                    <div style={{ ...T.subhead, fontSize:13, color:C.ink }}>{r.author}</div>
+                    <div style={{ ...T.caption, fontSize:11, color:C.muted }}>{r.role} · {r.time}</div>
+                  </div>
+                </div>
+                <p style={{ ...T.body, fontSize:14, color:C.body, lineHeight:1.65, marginBottom:10, paddingLeft:44 }}>{r.text}</p>
+                <div style={{ paddingLeft:44 }}>
+                  <button onClick={()=>toggleReplyLike(r.id)} style={{ background:"none", border:"none", display:"flex", alignItems:"center", gap:6, padding:0, cursor:"pointer" }}>
+                    <span style={{ fontSize:15, color:replyLikes[r.id]?C.red:C.ghost }}>{replyLikes[r.id]?"♥":"♡"}</span>
+                    <span style={{ ...T.label, fontSize:9, color:replyLikes[r.id]?C.red:C.muted }}>
+                      {r.likes + (replyLikes[r.id] && !r.liked ? 1 : 0)}
+                    </span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <div ref={bottomRef} style={{ height:20 }}/>
+      </div>
+
+      {/* Reply input */}
+      <div style={{ padding:"12px 16px 32px", background:C.white, borderTop:`1px solid ${C.rule}`, display:"flex", gap:10, alignItems:"flex-end", flexShrink:0 }}>
+        <div style={{ width:34, height:34, borderRadius:"50%", background:C.fog, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+          <div style={{ ...T.label, fontSize:10, color:C.body }}>Me</div>
+        </div>
+        <input value={newReply} onChange={e=>setNewReply(e.target.value)} onKeyDown={e=>e.key==="Enter"&&submitReply()} placeholder="Add a reply..."
+          style={{ flex:1, padding:"10px 0", background:"transparent", border:"none", borderBottom:`1px solid ${C.rule}`, ...T.body, fontSize:14, color:C.ink, outline:"none" }}/>
+        <button onClick={submitReply} style={{ width:38, height:38, borderRadius:"50%", background:newReply.trim()?C.red:C.rule, border:"none", color:C.white, fontSize:16, flexShrink:0, cursor:"pointer", transition:"background .2s" }}>&#8593;</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── HOME ─────────────────────────────────────────────────────────────────────
+function HomeScreen({ onLO, onCompany, onAspiring, onSignIn }) {
+  return (
+    <div style={{ minHeight:"100vh",background:C.white,display:"flex",flexDirection:"column" }}>
+      <div style={{ padding:"52px 28px 0",display:"flex",justifyContent:"space-between",alignItems:"center" }}>
+        <Logo/>
+        <button onClick={onSignIn} style={{ background:"none",border:"none",...T.label,fontSize:9,color:C.muted,cursor:"pointer" }}>Sign in</button>
+      </div>
+
+      <div style={{ flex:1,padding:"44px 28px 0",display:"flex",flexDirection:"column",justifyContent:"center" }}>
+        <div style={{ ...T.display,fontSize:44,color:C.ink,lineHeight:.88,marginBottom:20 }}>
+          Homeownership<br/>is just a dream<br/>until you<br/>make it <span style={{ color:C.red }}>real.</span>
+        </div>
+        <p style={{ ...T.body,fontSize:15,color:C.body,lineHeight:1.7,maxWidth:300,marginBottom:36 }}>
+          Orbit is where mortgage professionals find the shop that lets them do their best work — so more families get home.
+        </p>
+        <Btn v="red" onClick={onLO}>Find my next chapter</Btn>
+        <div style={{ height:10 }}/>
+        <Btn v="outline" onClick={onCompany} s={{ color:C.muted,fontSize:14 }}>I'm looking to hire</Btn>
+        <div style={{ height:10 }}/>
+        {/* Third path — aspirational, not an afterthought */}
+        <button onClick={onAspiring} style={{
+          width:"100%", padding:"15px 20px", borderRadius:4,
+          background:"transparent", border:`1.5px solid ${C.rule}`,
+          fontFamily:"Inter,sans-serif", fontWeight:600, fontSize:14,
+          color:C.body, cursor:"pointer",
+          display:"flex", justifyContent:"space-between", alignItems:"center",
+        }}>
+          <span>I want to become a loan originator</span>
+          <span style={{ ...T.label,fontSize:10,color:C.red }}>Start here →</span>
+        </button>
+      </div>
+
+      <div style={{ padding:"24px 28px 48px" }}>
+        <div style={{ borderTop:`1px solid ${C.rule}`,paddingTop:22 }}>
+          <div style={{ ...T.label,fontSize:9,color:C.muted,marginBottom:8 }}>A RocketPro Partner Promise</div>
+          <p style={{ ...T.body,fontSize:14,color:C.body,fontStyle:"italic",lineHeight:1.6 }}>
+            "Helping everyone home means everyone."
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ASPIRING LO FLOW ─────────────────────────────────────────────────────────
+// Aspirational. "This is where careers begin."
+function AspiringLO({ onDone }) {
+  const [step, setStep] = useState("welcome"); // welcome | safe | preview
+
+  if (step==="welcome") return (
+    <div style={{ minHeight:"100vh",background:C.white,display:"flex",flexDirection:"column" }}>
+      {/* Hero — dark, aspirational */}
+      <div style={{ background:C.ink,padding:"52px 28px 40px",flex:1,display:"flex",flexDirection:"column",justifyContent:"flex-end" }}>
+        <div style={{ ...T.label,fontSize:10,color:"rgba(255,255,255,.35)",marginBottom:16 }}>This is where careers begin.</div>
+        <div style={{ ...T.display,fontSize:44,color:C.white,lineHeight:.9,marginBottom:16 }}>
+          Every great<br/>loan officer<br/>started<br/><span style={{ color:C.red }}>right here.</span>
+        </div>
+        <p style={{ ...T.body,fontSize:15,color:"rgba(255,255,255,.55)",lineHeight:1.7,marginBottom:36 }}>
+          The mortgage industry puts more families in homes than any other profession in America. Your license is the first step. We'll help you get there.
+        </p>
+        <Btn v="red" onClick={()=>setStep("safe")}>Show me how</Btn>
+        <button onClick={onDone} style={{ background:"none",border:"none",...T.caption,fontSize:13,color:"rgba(255,255,255,.3)",padding:"12px",cursor:"pointer",marginTop:4 }}>Already licensed? Sign in</button>
+      </div>
+    </div>
+  );
+
+  if (step==="safe") return (
+    <div style={{ minHeight:"100vh",background:C.white,padding:"52px 28px 48px",display:"flex",flexDirection:"column" }}>
+      <Logo/>
+      <div style={{ marginTop:40,flex:1 }}>
+        <div style={{ ...T.label,fontSize:10,color:C.red,marginBottom:14 }}>Step 1 of 2</div>
+        <div style={{ ...T.display,fontSize:36,color:C.ink,lineHeight:.95,marginBottom:14 }}>
+          Get your<br/>NMLS license.
+        </div>
+        <p style={{ ...T.body,fontSize:14,color:C.body,lineHeight:1.7,marginBottom:32 }}>
+          To originate mortgage loans you need an NMLS license. The first step is completing the 20-hour SAFE Act pre-licensing course — and RocketPro University makes it as straightforward as it gets.
+        </p>
+
+        {/* What you get */}
+        <div style={{ display:"flex",flexDirection:"column",gap:0,marginBottom:32 }}>
+          {[
+            { n:"20", unit:"hours",  label:"SAFE Act pre-licensing course",    sub:"The federal requirement to get licensed" },
+            { n:"50",  unit:"states", label:"License in any state",             sub:"NMLS qualifies you nationwide" },
+            { n:"1",   unit:"step",   label:"From course to Orbit",             sub:"Complete your license, join the network" },
+          ].map((s,i)=>(
+            <div key={i} style={{ padding:"18px 0",borderBottom:`1px solid ${C.rule}`,display:"flex",gap:16,alignItems:"flex-start" }}>
+              <div style={{ flexShrink:0 }}>
+                <div style={{ ...T.display,fontSize:32,color:C.red,lineHeight:1 }}>{s.n}</div>
+                <div style={{ ...T.label,fontSize:8,color:C.muted }}>{s.unit.toUpperCase()}</div>
+              </div>
+              <div style={{ paddingTop:4 }}>
+                <div style={{ ...T.subhead,fontSize:15,color:C.ink,marginBottom:3 }}>{s.label}</div>
+                <div style={{ ...T.body,fontSize:13,color:C.muted }}>{s.sub}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* RocketPro University CTA */}
+        <div style={{ background:C.ink,borderRadius:6,padding:"20px",marginBottom:16 }}>
+          <div style={{ ...T.label,fontSize:9,color:"rgba(255,255,255,.35)",marginBottom:10 }}>RocketPro University</div>
+          <div style={{ ...T.heading,fontSize:20,color:C.white,marginBottom:6,lineHeight:1.2 }}>Start your 20-hour SAFE course today.</div>
+          <p style={{ ...T.body,fontSize:13,color:"rgba(255,255,255,.55)",marginBottom:16,lineHeight:1.6 }}>
+            Free for anyone. Taught by mortgage professionals. Designed to get you licensed and into a career you love.
+          </p>
+          <a href="https://university.rocketpro.com" target="_blank" rel="noreferrer" style={{ display:"block",textDecoration:"none" }}>
+            <Btn v="red">Go to RocketPro University →</Btn>
+          </a>
+          <div style={{ ...T.label,fontSize:8,color:"rgba(255,255,255,.25)",textAlign:"center",marginTop:10 }}>university.rocketpro.com</div>
+        </div>
+
+        <button onClick={()=>setStep("preview")} style={{ background:"none",border:`1px solid ${C.rule}`,borderRadius:4,padding:"13px",width:"100%",cursor:"pointer",...T.body,fontSize:14,color:C.muted }}>
+          Show me what Orbit looks like first
+        </button>
+      </div>
+    </div>
+  );
+
+  // Preview — show them what they're working toward
+  return (
+    <div style={{ minHeight:"100vh",background:C.white,padding:"52px 28px 48px",display:"flex",flexDirection:"column" }}>
+      <Logo/>
+      <div style={{ marginTop:40,flex:1 }}>
+        <div style={{ ...T.label,fontSize:10,color:C.red,marginBottom:14 }}>What you're working toward</div>
+        <div style={{ ...T.display,fontSize:34,color:C.ink,lineHeight:.95,marginBottom:14 }}>
+          This is what<br/>Orbit looks like<br/>once you're<br/>licensed.
+        </div>
+        <p style={{ ...T.body,fontSize:14,color:C.body,lineHeight:1.7,marginBottom:28 }}>
+          Browse shops that share your values. Match with the right one. Build the career you actually want.
+        </p>
+
+        {/* Mini preview card */}
+        <div style={{ border:`1px solid ${C.rule}`,borderRadius:8,overflow:"hidden",marginBottom:28 }}>
+          <div style={{ background:C.ink,padding:"20px" }}>
+            <div style={{ ...T.label,fontSize:8,color:"rgba(255,255,255,.3)",marginBottom:8 }}>Independent Broker · Dallas, TX</div>
+            <div style={{ ...T.display,fontSize:22,color:C.white,lineHeight:1,marginBottom:10 }}>"We grow your brand.<br/>You grow your business."</div>
+            <div style={{ display:"flex",gap:8 }}>
+              <div style={{ border:"1px solid rgba(255,255,255,.15)",color:"rgba(255,255,255,.55)",padding:"3px 9px",borderRadius:20,...T.label,fontSize:7 }}>Loan Officers</div>
+              <div style={{ background:"rgba(232,37,26,.2)",border:"1px solid rgba(232,37,26,.35)",color:"rgba(255,255,255,.8)",padding:"3px 9px",borderRadius:20,...T.label,fontSize:7 }}>RocketPro Partner</div>
+            </div>
+          </div>
+          <div style={{ padding:"14px 18px",display:"flex",gap:8 }}>
+            <div style={{ width:32,height:32,borderRadius:"50%",background:C.warm,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16 }}>♡</div>
+            <div style={{ flex:1,background:C.redSoft,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",...T.label,fontSize:10,color:C.red,padding:"10px" }}>♥ Interested</div>
+          </div>
+        </div>
+
+        <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+          <a href="https://university.rocketpro.com" target="_blank" rel="noreferrer" style={{ display:"block",textDecoration:"none" }}>
+            <Btn v="red">Start my SAFE course at RocketPro University</Btn>
+          </a>
+          <button onClick={onDone} style={{ background:"none",border:`1px solid ${C.rule}`,borderRadius:4,padding:"13px",width:"100%",cursor:"pointer",...T.body,fontSize:14,color:C.muted }}>
+            I already have my license
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── LO ONBOARD ───────────────────────────────────────────────────────────────
+function LOOnboard({ onDone }) {
+  const [step, setStep] = useState("welcome");
+  const [nmls, setNmls] = useState("");
+  const [checking, setChecking] = useState(false);
+  const [anon, setAnon] = useState(true);
+  const [profile, setProfile] = useState({
+    role:"", compTypes:[], minComp:"", style:"", states:[],
+    loanTypes:[], languages:[], volume:"", experience:"",
+    specialties:[],
+  });
+
+  const toggleArr = (field, val) => setProfile(p=>({
+    ...p, [field]: p[field].includes(val) ? p[field].filter(x=>x!==val) : [...p[field], val]
+  }));
+
+  const BackBtn = ({ to }) => (
+    <button onClick={()=>setStep(to)} style={{ background:"none",border:"none",color:C.red,fontSize:22,cursor:"pointer",padding:"0 4px 0 0",lineHeight:1 }}>&#8592;</button>
+  );
+
+  const StepHeader = ({ back, step:s, total, label }) => (
+    <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:32 }}>
+      {back && <BackBtn to={back}/>}
+      <div style={{ flex:1 }}>
+        <Logo size="sm"/>
+      </div>
+      <div style={{ ...T.label,fontSize:9,color:C.muted }}>{s} of {total}</div>
+    </div>
+  );
+
+  const check = () => {
+    setChecking(true);
+    setTimeout(()=>{ setChecking(false); setStep("profile1"); }, 1800);
+  };
+
+  // ── 1. Welcome ──
+  if (step==="welcome") return (
+    <div style={{ minHeight:"100vh",background:C.white,padding:"52px 28px 48px",display:"flex",flexDirection:"column" }}>
+      <Logo/>
+      <div style={{ flex:1,display:"flex",flexDirection:"column",justifyContent:"center" }}>
+        <div style={{ ...T.label,fontSize:10,color:C.red,marginBottom:16 }}>Welcome</div>
+        <div style={{ ...T.display,fontSize:42,color:C.ink,lineHeight:.9,marginBottom:20 }}>
+          Your career.<br/>Your rules.<br/>Your clients.
+        </div>
+        <p style={{ ...T.body,fontSize:15,color:C.body,lineHeight:1.7,marginBottom:40 }}>
+          Orbit helps you find a shop that shares your values — so you can do the work that actually matters.
+        </p>
+        {[
+          { n:"#2", text:"Your clients stay yours. Every shop here commits to it." },
+          { n:"#8", text:"Work where you want. Close when you're ready." },
+          { n:"#1", text:"Your terms. Your choices. Always." },
+        ].map((p,i)=>(
+          <div key={i} style={{ padding:"16px 0",borderBottom:`1px solid ${C.rule}`,display:"flex",gap:16,alignItems:"flex-start" }}>
+            <div style={{ ...T.label,fontSize:8,color:C.redMid,flexShrink:0,marginTop:3,minWidth:24 }}>{p.n}</div>
+            <div style={{ ...T.body,fontSize:14,color:C.body }}>{p.text}</div>
+          </div>
+        ))}
+        <div style={{ marginTop:36 }}><Btn v="red" onClick={()=>setStep("nmls")}>Get started</Btn></div>
+      </div>
+    </div>
+  );
+
+  // ── 2. NMLS ──
+  if (step==="nmls") return (
+    <div style={{ minHeight:"100vh",background:C.white,padding:"52px 28px 48px",display:"flex",flexDirection:"column" }}>
+      <StepHeader back="welcome" s={1} total={5} label="Verification"/>
+      <div style={{ flex:1,display:"flex",flexDirection:"column",justifyContent:"center" }}>
+        <div style={{ ...T.label,fontSize:10,color:C.red,marginBottom:16 }}>Step 1 — Verification</div>
+        <div style={{ ...T.display,fontSize:40,color:C.ink,lineHeight:.92,marginBottom:12 }}>Your NMLS<br/>number.</div>
+        <p style={{ ...T.body,fontSize:14,color:C.body,lineHeight:1.7,marginBottom:36 }}>
+          We verify in the background — seconds, not days. It keeps Orbit the most trusted network in mortgage.
+        </p>
+        <input value={nmls} onChange={e=>setNmls(e.target.value.replace(/\D/g,"").slice(0,10))}
+          placeholder="e.g. 1847302" autoFocus
+          style={{ width:"100%",background:"transparent",border:"none",outline:"none",borderBottom:`2px solid ${nmls.length>4?C.red:C.rule}`,...T.display,fontSize:40,color:C.ink,padding:"8px 0",letterSpacing:"0.04em",boxSizing:"border-box",marginBottom:10 }}/>
+        <div style={{ ...T.caption,fontSize:12,color:C.ghost,marginBottom:20 }}>
+          Professionals currently at Rocket Mortgage are not eligible at this time.
+        </div>
+        <div style={{ background:C.greenSoft,borderRadius:6,padding:"14px 16px",marginBottom:28,border:`1px solid rgba(10,122,74,.2)` }}>
+          <div style={{ display:"flex",alignItems:"flex-start",gap:10 }}>
+            <div style={{ width:18,height:18,borderRadius:"50%",background:C.green,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1 }}>
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5L4 7L8 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
+            <div>
+              <div style={{ ...T.subhead,fontSize:13,color:C.green,marginBottom:3 }}>Your career is protected</div>
+              <div style={{ ...T.body,fontSize:12,color:C.green,lineHeight:1.55,opacity:.8 }}>Orbit's retail and wholesale channels are completely firewalled. We don't poach. We don't share. Your exploration here stays here.</div>
+              <div style={{ ...T.label,fontSize:8,color:C.green,marginTop:6,opacity:.6 }}>Partner Promise #2</div>
+            </div>
+          </div>
+        </div>
+        {checking ? (
+          <div style={{ padding:"24px 0",textAlign:"center" }}>
+            <div style={{ display:"flex",justifyContent:"center",gap:8,marginBottom:10 }}>
+              {[0,1,2].map(i=><div key={i} style={{ width:9,height:9,borderRadius:"50%",background:C.red,opacity:0.2+i*0.4 }}/>)}
+            </div>
+            <div style={{ ...T.label,fontSize:9,color:C.muted }}>Verifying...</div>
+          </div>
+        ) : (
+          <>
+            <Btn v="red" onClick={check} disabled={nmls.length<5}>Verify and continue</Btn>
+            <button onClick={()=>setStep("profile1")} style={{ display:"block",width:"100%",marginTop:12,background:"none",border:"none",...T.caption,fontSize:13,color:C.ghost,cursor:"pointer",padding:"6px" }}>
+              Non-licensed role — skip this
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+
+  // ── 3. Profile — Role & Comp ──
+  if (step==="profile1") return (
+    <div style={{ minHeight:"100vh",background:C.white,padding:"52px 28px 120px" }}>
+      <StepHeader back="nmls" s={2} total={5} label="Role"/>
+      <div style={{ ...T.label,fontSize:10,color:C.red,marginBottom:14 }}>Step 2 — Role & Compensation</div>
+      <div style={{ ...T.display,fontSize:34,color:C.ink,lineHeight:.95,marginBottom:28 }}>What are you<br/>looking for?</div>
+
+      <div style={{ display:"flex",flexDirection:"column",gap:28 }}>
+        {/* Role */}
+        <div>
+          <Lbl>I am a</Lbl>
+          <div style={{ display:"flex",flexWrap:"wrap",gap:7 }}>
+            {["Loan Officer","LOA","Processor","Underwriter","Branch Manager","Compliance","Marketing","Admin"].map(r=>(
+              <button key={r} onClick={()=>setProfile(p=>({...p,role:r}))} style={{ padding:"9px 14px",background:profile.role===r?C.ink:"transparent",color:profile.role===r?C.white:C.muted,border:`1px solid ${profile.role===r?C.ink:C.rule}`,borderRadius:4,...T.label,fontSize:9,cursor:"pointer" }}>{r}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Comp type — multi select */}
+        <div>
+          <Lbl>Compensation I'm open to (select all that apply)</Lbl>
+          <div style={{ display:"flex",flexWrap:"wrap",gap:7 }}>
+            {["W2 Salary","1099 Commission","Base + Commission","Revenue Share","Hourly","Open to All"].map(c=>(
+              <button key={c} onClick={()=>toggleArr("compTypes",c)} style={{ padding:"9px 14px",background:profile.compTypes.includes(c)?C.red:"transparent",color:profile.compTypes.includes(c)?C.white:C.muted,border:`1px solid ${profile.compTypes.includes(c)?C.red:C.rule}`,borderRadius:4,...T.label,fontSize:9,cursor:"pointer" }}>{c}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Minimum comp expectation */}
+        <div>
+          <Lbl>Minimum compensation expectation</Lbl>
+          <div style={{ display:"flex",flexWrap:"wrap",gap:7 }}>
+            {["50%+ split","65%+ split","75%+ split","80%+ split","$60K+ base","$80K+ base","$100K+ base","Negotiable"].map(c=>(
+              <button key={c} onClick={()=>setProfile(p=>({...p,minComp:c}))} style={{ padding:"9px 14px",background:profile.minComp===c?C.ink:"transparent",color:profile.minComp===c?C.white:C.muted,border:`1px solid ${profile.minComp===c?C.ink:C.rule}`,borderRadius:4,...T.label,fontSize:9,cursor:"pointer" }}>{c}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Work style */}
+        <div>
+          <Lbl>Work style preference</Lbl>
+          <div style={{ display:"flex",gap:7 }}>
+            {["Remote","Hybrid","In-office","Open"].map(s=>(
+              <button key={s} onClick={()=>setProfile(p=>({...p,style:s}))} style={{ flex:1,padding:"10px 6px",background:profile.style===s?C.ink:"transparent",color:profile.style===s?C.white:C.muted,border:`1px solid ${profile.style===s?C.ink:C.rule}`,borderRadius:4,...T.label,fontSize:8,cursor:"pointer" }}>{s}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:420,padding:"16px 24px 32px",background:C.white,borderTop:`1px solid ${C.rule}` }}>
+        <Btn v="red" onClick={()=>setStep("profile2")} disabled={!profile.role}>Continue</Btn>
+      </div>
+    </div>
+  );
+
+  // ── 4. Profile — Specialties & Markets ──
+  if (step==="profile2") return (
+    <div style={{ minHeight:"100vh",background:C.white,padding:"52px 28px 120px" }}>
+      <StepHeader back="profile1" s={3} total={5} label="Specialties"/>
+      <div style={{ ...T.label,fontSize:10,color:C.red,marginBottom:14 }}>Step 3 — Markets & Specialties</div>
+      <div style={{ ...T.display,fontSize:34,color:C.ink,lineHeight:.95,marginBottom:28 }}>Tell us what<br/>you're great at.</div>
+
+      <div style={{ display:"flex",flexDirection:"column",gap:28 }}>
+        {/* States */}
+        <div>
+          <Lbl>States licensed in</Lbl>
+          <StateDropdown selected={profile.states} onChange={v=>setProfile(p=>({...p,states:v}))}/>
+        </div>
+
+        {/* Loan types */}
+        <div>
+          <Lbl>Loan types (select all)</Lbl>
+          <div style={{ display:"flex",flexWrap:"wrap",gap:7 }}>
+            {["Conventional","FHA","VA","USDA","Jumbo","Non-QM","Construction","HELOC","Reverse","Commercial"].map(l=>(
+              <button key={l} onClick={()=>toggleArr("loanTypes",l)} style={{ padding:"9px 14px",background:profile.loanTypes.includes(l)?C.red:"transparent",color:profile.loanTypes.includes(l)?C.white:C.muted,border:`1px solid ${profile.loanTypes.includes(l)?C.red:C.rule}`,borderRadius:4,...T.label,fontSize:9,cursor:"pointer" }}>{l}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Specialties / niche */}
+        <div>
+          <Lbl>Niche or specialty</Lbl>
+          <div style={{ display:"flex",flexWrap:"wrap",gap:7 }}>
+            {["First-time buyers","Self-employed","Veterans","Luxury","Investment","New construction","Refinance","Down payment assistance"].map(s=>(
+              <button key={s} onClick={()=>toggleArr("specialties",s)} style={{ padding:"9px 14px",background:profile.specialties.includes(s)?C.ink:"transparent",color:profile.specialties.includes(s)?C.white:C.muted,border:`1px solid ${profile.specialties.includes(s)?C.ink:C.rule}`,borderRadius:4,...T.label,fontSize:9,cursor:"pointer" }}>{s}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Languages */}
+        <div>
+          <Lbl>Languages spoken</Lbl>
+          <div style={{ display:"flex",flexWrap:"wrap",gap:7 }}>
+            {["English","Spanish","Mandarin","Vietnamese","Tagalog","Arabic","French","Portuguese","Korean"].map(l=>(
+              <button key={l} onClick={()=>toggleArr("languages",l)} style={{ padding:"9px 14px",background:profile.languages.includes(l)?C.ink:"transparent",color:profile.languages.includes(l)?C.white:C.muted,border:`1px solid ${profile.languages.includes(l)?C.ink:C.rule}`,borderRadius:4,...T.label,fontSize:9,cursor:"pointer" }}>{l}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:420,padding:"16px 24px 32px",background:C.white,borderTop:`1px solid ${C.rule}` }}>
+        <Btn v="red" onClick={()=>setStep("profile3")}>Continue</Btn>
+      </div>
+    </div>
+  );
+
+  // ── 5. Profile — Production & Experience ──
+  if (step==="profile3") return (
+    <div style={{ minHeight:"100vh",background:C.white,padding:"52px 28px 120px" }}>
+      <StepHeader back="profile2" s={4} total={5} label="Production"/>
+      <div style={{ ...T.label,fontSize:10,color:C.red,marginBottom:14 }}>Step 4 — Production</div>
+      <div style={{ ...T.display,fontSize:34,color:C.ink,lineHeight:.95,marginBottom:28 }}>Your numbers<br/>tell the story.</div>
+
+      <div style={{ display:"flex",flexDirection:"column",gap:28 }}>
+        {/* Monthly volume */}
+        <div>
+          <Lbl>Average monthly volume</Lbl>
+          <div style={{ display:"flex",flexWrap:"wrap",gap:7 }}>
+            {["Under $500K","$500K – $1M","$1M – $2M","$2M – $4M","$4M – $6M","$6M – $10M","$10M+","N/A — not LO"].map(v=>(
+              <button key={v} onClick={()=>setProfile(p=>({...p,volume:v}))} style={{ padding:"9px 14px",background:profile.volume===v?C.red:"transparent",color:profile.volume===v?C.white:C.muted,border:`1px solid ${profile.volume===v?C.red:C.rule}`,borderRadius:4,...T.label,fontSize:9,cursor:"pointer" }}>{v}</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Years experience */}
+        <div>
+          <Lbl>Years in mortgage</Lbl>
+          <div style={{ display:"flex",flexWrap:"wrap",gap:7 }}>
+            {["Less than 1","1–2","3–5","6–10","11–15","15–20","20+"].map(y=>(
+              <button key={y} onClick={()=>setProfile(p=>({...p,experience:y}))} style={{ padding:"9px 14px",background:profile.experience===y?C.ink:"transparent",color:profile.experience===y?C.white:C.muted,border:`1px solid ${profile.experience===y?C.ink:C.rule}`,borderRadius:4,...T.label,fontSize:9,cursor:"pointer" }}>{y} yrs</button>
+            ))}
+          </div>
+        </div>
+
+        {/* Summary preview */}
+        {(profile.role || profile.volume) && (
+          <div style={{ background:C.warm,borderRadius:6,padding:"16px",border:`1px solid ${C.rule}` }}>
+            <Lbl>Your profile so far</Lbl>
+            <div style={{ display:"flex",flexDirection:"column",gap:6 }}>
+              {profile.role && <div style={{ ...T.body,fontSize:13,color:C.body }}>Role: <strong>{profile.role}</strong></div>}
+              {profile.compTypes.length>0 && <div style={{ ...T.body,fontSize:13,color:C.body }}>Comp: <strong>{profile.compTypes.join(", ")}</strong></div>}
+              {profile.style && <div style={{ ...T.body,fontSize:13,color:C.body }}>Style: <strong>{profile.style}</strong></div>}
+              {profile.states.length>0 && <div style={{ ...T.body,fontSize:13,color:C.body }}>States: <strong>{profile.states.join(", ")}</strong></div>}
+              {profile.volume && <div style={{ ...T.body,fontSize:13,color:C.body }}>Volume: <strong>{profile.volume}</strong></div>}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div style={{ position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:420,padding:"16px 24px 32px",background:C.white,borderTop:`1px solid ${C.rule}` }}>
+        <Btn v="red" onClick={()=>setStep("privacy")}>Continue</Btn>
+      </div>
+    </div>
+  );
+
+  // ── 6. Privacy ──
+  return (
+    <div style={{ minHeight:"100vh",background:C.white,padding:"52px 28px 48px",display:"flex",flexDirection:"column" }}>
+      <StepHeader back="profile3" s={5} total={5} label="Privacy"/>
+      <div style={{ flex:1,display:"flex",flexDirection:"column",justifyContent:"center" }}>
+        <div style={{ ...T.label,fontSize:10,color:C.red,marginBottom:16 }}>Step 5 — Privacy</div>
+        <div style={{ ...T.display,fontSize:40,color:C.ink,lineHeight:.92,marginBottom:14 }}>
+          In mortgage,<br/>everyone knows<br/>everyone.
+        </div>
+        <p style={{ ...T.body,fontSize:15,color:C.body,lineHeight:1.7,marginBottom:36 }}>
+          Anonymity Mode means you explore freely. Companies see your production and skills — not your name or employer — until you're ready.
+        </p>
+        {[
+          { on:true,  label:"Anonymity Mode", desc:"Browse privately. Reveal when you're ready." },
+          { on:false, label:"Public Profile",  desc:"Your full profile is visible to all companies." },
+        ].map(opt=>(
+          <div key={opt.label} onClick={()=>setAnon(opt.on)} style={{ padding:"18px 0",cursor:"pointer",borderBottom:`1px solid ${C.rule}`,display:"flex",gap:16,alignItems:"flex-start" }}>
+            <div style={{ width:20,height:20,borderRadius:"50%",border:`2px solid ${anon===opt.on?C.red:C.rule}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:2 }}>
+              {anon===opt.on && <div style={{ width:8,height:8,borderRadius:"50%",background:C.red }}/>}
+            </div>
+            <div>
+              <div style={{ ...T.subhead,fontSize:15,color:C.ink,marginBottom:3 }}>{opt.label}</div>
+              <div style={{ ...T.body,fontSize:13,color:C.muted }}>{opt.desc}</div>
+            </div>
+          </div>
+        ))}
+        <div style={{ marginTop:32 }}><Btn v="red" onClick={onDone}>Enter Orbit</Btn></div>
+      </div>
+    </div>
+  );
+}
+
+// ─── LO MAIN APP ─────────────────────────────────────────────────────────────
+function LOApp({ onSignOut }) {
+  const [tab, setTab] = useState("discover");
+  const [cardIdx, setCardIdx] = useState(0);
+  const [matches, setMatches] = useState([]);
+  const [showMatch, setShowMatch] = useState(null);
+  const [chatParty, setChatParty] = useState(null);
+  const [schedParty, setSchedParty] = useState(null);
+  const [showSched, setShowSched] = useState(false);
+  const [interviews, setInterviews] = useState([
+    { id:"iv1", party:{ name:"Summit Mortgage Partners", type:"Independent Broker" }, slot:"Mon Jun 30 · 9:00 AM", zoom:"https://zoom.us" },
+  ]);
+  const [posts, setPosts] = useState(COMMUNITY_POSTS);
+  const [newsTab, setNewsTab] = useState("feed");
+  const [catFilter, setCatFilter] = useState("All");
+  const [compose, setCompose] = useState(false);
+  const [newPost, setNewPost] = useState("");
+
+  const deck = COMPANIES.slice(cardIdx);
+  const TABS = [
+    { id:"discover",  label:"Discover" },
+    { id:"matches",   label:matches.length?`Matches · ${matches.length}`:"Matches" },
+    { id:"community", label:"Community" },
+    { id:"learn",     label:"Learn" },
+    { id:"profile",   label:"Profile" },
+  ];
+
+  const swipe = dir => {
+    const co = deck[0]; if(!co) return;
+    if(dir==="right"){ setMatches(m=>[...m,co]); setShowMatch(co); }
+    setCardIdx(i=>i+1);
+  };
+
+  const toggleLike = id => setPosts(prev=>prev.map(p=>p.id===id?{...p,liked:!p.liked,likes:p.liked?p.likes-1:p.likes+1}:p));
+  const submitPost = () => {
+    if(!newPost.trim()) return;
+    setPosts(prev=>[{ id:"n-"+Date.now(),author:"Senior LO, Midwest",role:"LO, 7 yrs",time:"Just now",cat:"Career",text:newPost.trim(),likes:0,replies:0,liked:false },...prev]);
+    setNewPost(""); setCompose(false);
+  };
+
+  if (chatParty) return (
+    <ChatScreen party={chatParty} onBack={()=>setChatParty(null)}
+      onSchedule={p=>{ setChatParty(null); setSchedParty(p); setShowSched(true); }}
+      isCompany={false}/>
+  );
+
+  if (openPost) return (
+    <PostDetailScreen post={openPost} onBack={()=>setOpenPost(null)} isCompany={false}/>
+  );
+
+  return (
+    <div style={{ paddingBottom:80, minHeight:"100vh", background:C.off, maxWidth:420, margin:"0 auto" }}>
+
+      {/* ── DISCOVER ── */}
+      {tab==="discover" && (
+        <div style={{ display:"flex",flexDirection:"column",height:"100vh" }}>
+          <div style={{ background:C.white,padding:"52px 22px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`1px solid ${C.rule}` }}>
+            <Logo size="sm"/>
+            <div style={{ display:"flex",alignItems:"center",gap:6,background:C.redSoft,border:`1px solid ${C.redMid}`,borderRadius:20,padding:"4px 11px" }}>
+              <div style={{ width:6,height:6,borderRadius:"50%",background:C.red }}/>
+              <div style={{ ...T.label,fontSize:8,color:C.red }}>Anon Mode</div>
+            </div>
+          </div>
+
+          {/* Filter bar */}
+          <div style={{ background:C.white,borderBottom:`1px solid ${C.rule}`,padding:"10px 16px",display:"flex",gap:7,overflowX:"auto",WebkitOverflowScrolling:"touch" }}>
+            {[
+              { label:"All",       active:true  },
+              { label:"Remote",    active:false },
+              { label:"Hybrid",    active:false },
+              { label:"In-office", active:false },
+              { label:"LOs",       active:false },
+              { label:"Processors",active:false },
+              { label:"Texas",     active:false },
+              { label:"Arizona",   active:false },
+            ].map((f,i)=>(
+              <div key={i} style={{ padding:"6px 13px",borderRadius:20,flexShrink:0,cursor:"pointer",border:`1px solid ${f.active?C.ink:C.rule}`,background:f.active?C.ink:"transparent",...T.label,fontSize:8,color:f.active?C.white:C.muted }}>
+                {f.label}
+              </div>
+            ))}
+          </div>
+
+          {deck.length===0 ? (
+            <div style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:40 }}>
+              <div style={{ ...T.display,fontSize:30,color:C.ink,lineHeight:1,marginBottom:10 }}>You've seen<br/>everyone.</div>
+              <p style={{ ...T.body,fontSize:14,color:C.muted,marginBottom:24 }}>New shops join Orbit every week.</p>
+              <Btn v="soft" onClick={()=>setTab("matches")} s={{ maxWidth:220 }}>See my matches · {matches.length}</Btn>
+            </div>
+          ) : (
+            <>
+              <div style={{ flex:1,position:"relative",padding:"14px 18px 0" }}>
+                {deck.length>1 && (
+                  <div style={{ position:"absolute",inset:"18px 26px 0",background:C.white,borderRadius:8,border:`1px solid ${C.rule}`,transform:"scale(.97) translateY(6px)",zIndex:1 }}/>
+                )}
+                {deck.slice(0,2).reverse().map((co,i)=>(
+                  <CompanyCard key={co.id+"-"+i} co={co} isTop={i===Math.min(deck.length,2)-1} onSwipe={swipe}/>
+                ))}
+              </div>
+              <div style={{ background:C.white,borderTop:`1px solid ${C.rule}`,padding:"14px 0 6px",display:"flex",justifyContent:"center",alignItems:"center",gap:16 }}>
+                <button onClick={()=>swipe("left")} style={{ width:52,height:52,borderRadius:"50%",background:C.white,border:`1px solid ${C.rule}`,fontSize:20,color:C.ghost,cursor:"pointer" }}>✕</button>
+                <button onClick={()=>swipe("right")} style={{ width:66,height:66,borderRadius:"50%",background:C.red,border:"none",fontSize:24,color:C.white,cursor:"pointer",boxShadow:"0 4px 20px rgba(232,37,26,.4)" }}>♥</button>
+                <button style={{ width:52,height:52,borderRadius:"50%",background:C.white,border:`1px solid ${C.rule}`,fontSize:20,color:C.ghost,cursor:"pointer" }}>★</button>
+              </div>
+            </>
+          )}
+
+          {showMatch && (
+            <MatchModal party={showMatch} isCompany={false} locked={false}
+              onChat={p=>{ setShowMatch(null); setChatParty(p); }}
+              onSchedule={p=>{ setShowMatch(null); setSchedParty(p); setShowSched(true); }}
+              onClose={()=>setShowMatch(null)}/>
+          )}
+          {showSched && schedParty && (
+            <ScheduleModal party={schedParty}
+              onClose={()=>{ setShowSched(false); setSchedParty(null); }}
+              onConfirm={iv=>setInterviews(prev=>[{ id:"iv-"+Date.now(),...iv },...prev])}/>
+          )}
+        </div>
+      )}
+
+      {/* ── MATCHES ── */}
+      {tab==="matches" && (
+        <div style={{ minHeight:"100vh",background:C.white }}>
+          <div style={{ padding:"52px 24px 24px",borderBottom:`1px solid ${C.rule}` }}>
+            <div style={{ ...T.label,fontSize:10,color:C.red,marginBottom:10 }}>Matches</div>
+            <div style={{ ...T.display,fontSize:36,color:C.ink,lineHeight:.95,marginBottom:6 }}>
+              {matches.length>0?`${matches.length} interested.`:"No matches yet."}
+            </div>
+            <div style={{ ...T.body,fontSize:14,color:C.muted }}>
+              {matches.length>0?"Your identity stays private until you're ready.":"Keep swiping — your next chapter is out there."}
+            </div>
+          </div>
+
+          {/* Pinned interviews */}
+          {interviews.length>0 && (
+            <div style={{ padding:"20px 24px",borderBottom:`1px solid ${C.rule}` }}>
+              <Lbl>Upcoming Interviews · {interviews.length}</Lbl>
+              {interviews.map(iv=>(
+                <div key={iv.id} style={{ background:C.ink,borderRadius:6,padding:"18px 20px",marginBottom:8 }}>
+                  <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10 }}>
+                    <div>
+                      <div style={{ ...T.display,fontSize:20,color:C.white,lineHeight:1,marginBottom:4 }}>{iv.slot}</div>
+                      <div style={{ ...T.subhead,fontSize:14,color:"rgba(255,255,255,.65)" }}>{iv.party.name}</div>
+                    </div>
+                    <div style={{ ...T.label,fontSize:8,color:C.green,background:"rgba(10,122,74,.15)",padding:"4px 9px",borderRadius:20,border:"1px solid rgba(10,122,74,.25)" }}>Confirmed</div>
+                  </div>
+                  <div style={{ display:"flex",gap:8 }}>
+                    <a href={iv.zoom} style={{ flex:1,padding:"10px",background:C.green,border:"none",borderRadius:4,...T.label,fontSize:9,color:C.white,textAlign:"center",textDecoration:"none",display:"block" }}>Join Zoom</a>
+                    <button style={{ flex:1,padding:"10px",background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.12)",borderRadius:4,...T.label,fontSize:9,color:"rgba(255,255,255,.5)",cursor:"pointer" }}>Reschedule</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Match list */}
+          <div style={{ padding:"0 24px" }}>
+            {matches.length===0 ? (
+              <div style={{ padding:"48px 0",textAlign:"center" }}>
+                <div style={{ ...T.body,fontSize:14,color:C.ghost }}>Swipe right on a company to match.</div>
+              </div>
+            ) : matches.map(co=>(
+              <div key={co.id} style={{ padding:"20px 0",borderBottom:`1px solid ${C.rule}` }}>
+                <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8 }}>
+                  <div>
+                    <div style={{ ...T.subhead,fontSize:16,color:C.ink,marginBottom:3 }}>{co.name}</div>
+                    <div style={{ ...T.caption,fontSize:12,color:C.muted }}>{co.type} · {co.remote}</div>
+                  </div>
+                  <div style={{ ...T.label,fontSize:8,color:C.red,background:C.redSoft,padding:"4px 9px",borderRadius:20,border:`1px solid ${C.redMid}`,flexShrink:0,marginLeft:12 }}>Matched</div>
+                </div>
+                <div style={{ paddingLeft:12,borderLeft:`2px solid ${C.redMid}`,marginBottom:16 }}>
+                  <p style={{ ...T.body,fontSize:13,color:C.body,fontStyle:"italic" }}>"{co.review}"</p>
+                </div>
+                <div style={{ display:"flex",gap:8 }}>
+                  <Btn v="outline" onClick={()=>setChatParty(co)} s={{ fontSize:13,padding:"11px" }}>Chat</Btn>
+                  <Btn v="red" onClick={()=>{ setSchedParty(co); setShowSched(true); }} s={{ fontSize:13,padding:"11px" }}>Schedule call</Btn>
+                </div>
+                <button onClick={()=>setMatches(m=>m.filter(c=>c.id!==co.id))} style={{ background:"none",border:"none",...T.caption,fontSize:12,color:C.ghost,padding:"8px 0 0",cursor:"pointer",width:"100%",textAlign:"left" }}>
+                  Disconnect from this company
+                </button>
+              </div>
+            ))}
+          </div>
+          {showSched && schedParty && (
+            <ScheduleModal party={schedParty}
+              onClose={()=>{ setShowSched(false); setSchedParty(null); }}
+              onConfirm={iv=>setInterviews(prev=>[{ id:"iv-"+Date.now(),...iv },...prev])}/>
+          )}
+        </div>
+      )}
+
+      {/* ── COMMUNITY ── */}
+      {tab==="community" && (
+        <div style={{ minHeight:"100vh",background:C.white }}>
+          <div style={{ padding:"52px 24px 0",borderBottom:`1px solid ${C.rule}` }}>
+            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:20 }}>
+              <div>
+                <div style={{ ...T.label,fontSize:10,color:C.red,marginBottom:10 }}>Community</div>
+                <div style={{ ...T.display,fontSize:30,color:C.ink,lineHeight:.95 }}>The pulse<br/>of mortgage.</div>
+              </div>
+              {newsTab==="feed" && <button onClick={()=>setCompose(true)} style={{ padding:"10px 16px",background:C.red,border:"none",borderRadius:4,...T.label,fontSize:9,color:C.white,cursor:"pointer",flexShrink:0,marginBottom:4 }}>+ Post</button>}
+            </div>
+            <div style={{ display:"flex" }}>
+              {[{id:"feed",label:"Community"},{id:"news",label:"Industry News"}].map(t=>(
+                <button key={t.id} onClick={()=>setNewsTab(t.id)} style={{ padding:"11px 20px 13px",background:"none",border:"none",cursor:"pointer",...T.label,fontSize:9,color:newsTab===t.id?C.ink:C.muted,borderBottom:newsTab===t.id?`2px solid ${C.red}`:"2px solid transparent" }}>{t.label}</button>
+              ))}
+            </div>
+          </div>
+
+          {newsTab==="feed" && <>
+            <div style={{ padding:"14px 24px",borderBottom:`1px solid ${C.rule}`,display:"flex",gap:7,overflowX:"auto" }}>
+              {["All","Win","Career","Advice","Question"].map(c=>(
+                <button key={c} onClick={()=>setCatFilter(c)} style={{ padding:"6px 14px",background:"transparent",flexShrink:0,border:`1px solid ${catFilter===c?C.ink:C.rule}`,borderRadius:20,cursor:"pointer",...T.label,fontSize:8,color:catFilter===c?C.ink:C.muted }}>{c.toUpperCase()}</button>
+              ))}
+            </div>
+            {(catFilter==="All"?posts:posts.filter(p=>p.cat===catFilter)).map(post=>(
+              <div key={post.id} style={{ padding:"22px 24px",borderBottom:`1px solid ${C.rule}` }}>
+                <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12 }}>
+                  <div>
+                    <div style={{ ...T.subhead,fontSize:13,color:C.ink }}>{post.author}</div>
+                    <div style={{ ...T.caption,fontSize:11,color:C.muted }}>{post.role} · {post.time}</div>
+                  </div>
+                  <div style={{ ...T.label,fontSize:8,color:post.cat==="Win"?C.red:post.cat==="Advice"?C.green:C.muted,background:post.cat==="Win"?C.redSoft:post.cat==="Advice"?C.greenSoft:C.warm,padding:"3px 9px",borderRadius:20,flexShrink:0,marginLeft:8 }}>{post.cat.toUpperCase()}</div>
+                </div>
+                <p onClick={()=>setOpenPost(post)} style={{ ...T.body,fontSize:14,color:C.body,lineHeight:1.65,marginBottom:14,cursor:"pointer" }}>{post.text}</p>
+                <div style={{ display:"flex",alignItems:"center",gap:20 }}>
+                  <button onClick={()=>toggleLike(post.id)} style={{ background:"none",border:"none",display:"flex",alignItems:"center",gap:6,padding:0,cursor:"pointer" }}>
+                    <span style={{ fontSize:16,color:post.liked?C.red:C.ghost }}>{post.liked?"♥":"♡"}</span>
+                    <span style={{ ...T.label,fontSize:9,color:post.liked?C.red:C.muted }}>{post.likes}</span>
+                  </button>
+                  <button onClick={()=>setOpenPost(post)} style={{ background:"none",border:"none",display:"flex",alignItems:"center",gap:6,padding:0,cursor:"pointer" }}>
+                    <span style={{ ...T.label,fontSize:9,color:C.muted }}>{(POST_REPLIES[post.id]||[]).length||post.replies} replies</span>
+                    <span style={{ ...T.label,fontSize:9,color:C.red }}>View &#8594;</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </>}
+
+          {newsTab==="news" && <>
+            {NEWS.map(a=>(
+              <div key={a.headline} style={{ padding:"20px 24px",borderBottom:`1px solid ${C.rule}`,cursor:"pointer" }}>
+                <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8 }}>
+                  <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+                    <div style={{ ...T.label,fontSize:8,color:C.red }}>{a.source.toUpperCase()}</div>
+                    <div style={{ width:2,height:2,borderRadius:"50%",background:C.rule }}/>
+                    <div style={{ ...T.label,fontSize:8,color:C.muted }}>{a.time.toUpperCase()}</div>
+                  </div>
+                  <div style={{ ...T.label,fontSize:8,color:C.muted,background:C.warm,padding:"3px 9px",borderRadius:20 }}>{a.cat.toUpperCase()}</div>
+                </div>
+                <div style={{ ...T.heading,fontSize:15,color:C.ink,lineHeight:1.3,marginBottom:10 }}>{a.headline}</div>
+                <div style={{ ...T.label,fontSize:9,color:C.red }}>Read article</div>
+              </div>
+            ))}
+            <div style={{ padding:"20px 24px" }}>
+              <Lbl>Sources</Lbl>
+              <div style={{ display:"flex",flexWrap:"wrap",gap:7 }}>
+                {["HousingWire","The Mortgage Note","NMP","MPA","Scotsman Guide"].map(s=>(
+                  <div key={s} style={{ ...T.label,fontSize:8,color:C.muted,border:`1px solid ${C.rule}`,padding:"4px 10px",borderRadius:20 }}>{s}</div>
+                ))}
+              </div>
+            </div>
+          </>}
+
+          {compose && (
+            <div style={{ position:"fixed",inset:0,background:"rgba(17,17,16,.72)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200 }}>
+              <div style={{ background:C.white,borderRadius:"12px 12px 0 0",padding:"28px 24px 48px",width:"100%",maxWidth:420 }}>
+                <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
+                  <div style={{ ...T.heading,fontSize:18,color:C.ink }}>Share with the community</div>
+                  <button onClick={()=>setCompose(false)} style={{ background:"none",border:"none",color:C.muted,fontSize:24,cursor:"pointer" }}>×</button>
+                </div>
+                <textarea value={newPost} onInput={e=>setNewPost(e.target.value)} placeholder="Share a win, ask a question, start a conversation…" rows={5}
+                  style={{ width:"100%",background:"transparent",border:"none",borderBottom:`1px solid ${C.rule}`,...T.body,fontSize:14,color:C.ink,outline:"none",resize:"none",lineHeight:1.65,boxSizing:"border-box",marginBottom:20,padding:"0" }} autoFocus/>
+                <Btn v="red" onClick={submitPost} disabled={!newPost.trim()}>Post to Community</Btn>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── LEARN ── */}
+      {tab==="learn" && (
+        <div style={{ minHeight:"100vh",background:C.white }}>
+          {/* Hero */}
+          <div style={{ background:C.ink,padding:"52px 24px 32px" }}>
+            <div style={{ ...T.label,fontSize:10,color:"rgba(255,255,255,.35)",marginBottom:12 }}>RocketPro University</div>
+            <div style={{ ...T.display,fontSize:34,color:C.white,lineHeight:.95,marginBottom:12 }}>
+              Keep growing.<br/>Keep closing.
+            </div>
+            <p style={{ ...T.body,fontSize:14,color:"rgba(255,255,255,.5)",lineHeight:1.65 }}>
+              The best loan officers never stop learning. RocketPro University is built for mortgage professionals at every stage.
+            </p>
+          </div>
+
+          <div style={{ padding:"0 24px" }}>
+            {/* SAFE course feature */}
+            <div style={{ padding:"24px 0",borderBottom:`1px solid ${C.rule}` }}>
+              <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12 }}>
+                <div style={{ flex:1 }}>
+                  <div style={{ ...T.label,fontSize:9,color:C.red,marginBottom:6 }}>Pre-Licensing</div>
+                  <div style={{ ...T.heading,fontSize:20,color:C.ink,lineHeight:1.15,marginBottom:6 }}>20-Hour SAFE Act Course</div>
+                  <p style={{ ...T.body,fontSize:13,color:C.body,lineHeight:1.6 }}>
+                    The federally required course to obtain your NMLS license. Taught by working mortgage professionals. Self-paced, fully online.
+                  </p>
+                </div>
+              </div>
+              <div style={{ display:"flex",gap:12,marginBottom:16 }}>
+                {[{n:"20",l:"Credit hours"},{n:"50",l:"State eligible"},{n:"Free",l:"To access"}].map(s=>(
+                  <div key={s.l} style={{ flex:1,background:C.warm,borderRadius:4,padding:"12px",border:`1px solid ${C.rule}`,textAlign:"center" }}>
+                    <div style={{ ...T.display,fontSize:20,color:C.red,lineHeight:1,marginBottom:2 }}>{s.n}</div>
+                    <div style={{ ...T.label,fontSize:8,color:C.muted }}>{s.l.toUpperCase()}</div>
+                  </div>
+                ))}
+              </div>
+              <a href="https://university.rocketpro.com" target="_blank" rel="noreferrer" style={{ display:"block",textDecoration:"none" }}>
+                <Btn v="red">Start SAFE course at RocketPro University</Btn>
+              </a>
+            </div>
+
+            {/* Continuing education */}
+            <div style={{ padding:"24px 0",borderBottom:`1px solid ${C.rule}` }}>
+              <div style={{ ...T.label,fontSize:9,color:C.muted,marginBottom:12 }}>Also Available</div>
+              {[
+                { title:"Continuing Education",     desc:"8 hours annually to maintain your NMLS license. Required in most states.", tag:"CE" },
+                { title:"Product Training",          desc:"Deep dives into FHA, VA, Jumbo, Non-QM, and RocketPro's full product suite.", tag:"Training" },
+                { title:"Sales & Client Coaching",  desc:"Scripts, objection handling, and referral-building strategies from top LOs.", tag:"Sales" },
+                { title:"Branch Manager Prep",       desc:"Leadership, compliance, recruiting, and P&L — for LOs ready to lead a team.", tag:"Advanced" },
+              ].map((c,i)=>(
+                <div key={i} style={{ padding:"16px 0",borderBottom:i<3?`1px solid ${C.rule}`:"none",display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12 }}>
+                  <div style={{ flex:1 }}>
+                    <div style={{ ...T.subhead,fontSize:14,color:C.ink,marginBottom:3 }}>{c.title}</div>
+                    <div style={{ ...T.body,fontSize:13,color:C.muted }}>{c.desc}</div>
+                  </div>
+                  <div style={{ ...T.label,fontSize:8,color:C.muted,background:C.warm,padding:"4px 9px",borderRadius:20,flexShrink:0,border:`1px solid ${C.rule}` }}>{c.tag.toUpperCase()}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* University CTA */}
+            <div style={{ padding:"24px 0 100px" }}>
+              <div style={{ background:C.ink,borderRadius:6,padding:"20px" }}>
+                <div style={{ ...T.label,fontSize:9,color:"rgba(255,255,255,.35)",marginBottom:8 }}>RocketPro University</div>
+                <div style={{ ...T.heading,fontSize:18,color:C.white,marginBottom:6,lineHeight:1.2 }}>Everything you need. One place.</div>
+                <p style={{ ...T.body,fontSize:13,color:"rgba(255,255,255,.5)",marginBottom:16,lineHeight:1.6 }}>
+                  Pre-licensing, continuing education, product training, and sales coaching — all built for mortgage professionals.
+                </p>
+                <a href="https://university.rocketpro.com" target="_blank" rel="noreferrer" style={{ display:"block",textDecoration:"none" }}>
+                  <Btn v="red">Visit university.rocketpro.com →</Btn>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── PROFILE ── */}
+      {tab==="profile" && (
+        <div style={{ minHeight:"100vh",background:C.white,paddingBottom:100 }}>
+          {/* Header with photo */}
+          <div style={{ background:C.ink,padding:"52px 24px 28px" }}>
+            <div style={{ display:"flex",gap:16,alignItems:"flex-end",marginBottom:16 }}>
+              {/* Profile photo — blurred in anon mode */}
+              <div style={{ position:"relative",flexShrink:0 }}>
+                <div style={{ width:72,height:72,borderRadius:12,background:"rgba(255,255,255,.1)",border:"2px solid rgba(255,255,255,.15)",display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden" }}>
+                  <div style={{ fontSize:28,filter:"blur(8px)" }}>👤</div>
+                </div>
+                <div style={{ position:"absolute",bottom:-4,right:-4,width:20,height:20,borderRadius:"50%",background:C.red,display:"flex",alignItems:"center",justifyContent:"center",border:"2px solid "+C.ink }}>
+                  <div style={{ ...T.label,fontSize:9,color:C.white }}>+</div>
+                </div>
+              </div>
+              <div>
+                <div style={{ ...T.display,fontSize:26,color:C.white,lineHeight:.95,marginBottom:4 }}>Senior LO,<br/>Midwest</div>
+                <div style={{ ...T.caption,fontSize:12,color:"rgba(255,255,255,.42)" }}>NMLS Verified · Anon Mode On</div>
+              </div>
+            </div>
+            <div style={{ background:"rgba(255,255,255,.06)",borderRadius:4,padding:"10px 14px",border:"1px solid rgba(255,255,255,.08)" }}>
+              <div style={{ ...T.caption,fontSize:12,color:"rgba(255,255,255,.45)" }}>
+                Your photo is hidden while Anonymity Mode is on. It reveals automatically when you match and choose to connect.
+              </div>
+            </div>
+          </div>
+
+          <div style={{ padding:"0 24px" }}>
+            {/* Anon toggle */}
+            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",padding:"18px 0",borderBottom:`1px solid ${C.rule}` }}>
+              <div>
+                <div style={{ ...T.subhead,fontSize:14,color:C.ink,marginBottom:3 }}>Anonymity Mode</div>
+                <div style={{ ...T.caption,fontSize:12,color:C.muted }}>Name, photo, and employer hidden</div>
+              </div>
+              <div style={{ ...T.label,fontSize:9,color:C.red,background:C.redSoft,padding:"5px 12px",borderRadius:20,border:`1px solid ${C.redMid}` }}>On</div>
+            </div>
+
+            {/* Stats */}
+            {[["Role","Senior Loan Officer"],["Experience","7 years"],["Volume","$3.2M / mo"],["Target","75%+ split"],["Style","Remote preferred"],["NMLS","Verified ✓"]].map(([l,v])=>(
+              <div key={l} style={{ display:"flex",justifyContent:"space-between",alignItems:"center",padding:"16px 0",borderBottom:`1px solid ${C.rule}` }}>
+                <div style={{ ...T.label,fontSize:9,color:C.muted }}>{l.toUpperCase()}</div>
+                <div style={{ ...T.subhead,fontSize:14,color:l==="NMLS"?C.green:C.ink }}>{v}</div>
+              </div>
+            ))}
+
+            {/* Social links */}
+            <div style={{ padding:"20px 0",borderBottom:`1px solid ${C.rule}` }}>
+              <Lbl>Social Profiles</Lbl>
+              <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+                {[
+                  { label:"LinkedIn", placeholder:"linkedin.com/in/yourprofile", icon:"in", value:"linkedin.com/in/jordanrivera" },
+                  { label:"Instagram", placeholder:"@yourhandle", icon:"ig", value:"" },
+                  { label:"Facebook", placeholder:"facebook.com/yourpage", icon:"fb", value:"" },
+                ].map(s=>(
+                  <div key={s.label} style={{ display:"flex",alignItems:"center",gap:12,padding:"12px 14px",background:C.warm,borderRadius:4,border:`1px solid ${C.rule}` }}>
+                    <div style={{ width:32,height:32,borderRadius:6,background:s.value?C.ink:C.rule,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+                      <div style={{ ...T.label,fontSize:9,color:s.value?C.white:C.ghost }}>{s.icon.toUpperCase()}</div>
+                    </div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ ...T.label,fontSize:8,color:C.muted,marginBottom:2 }}>{s.label.toUpperCase()}</div>
+                      <div style={{ ...T.body,fontSize:13,color:s.value?C.ink:C.ghost }}>{s.value||s.placeholder}</div>
+                    </div>
+                    <div style={{ ...T.label,fontSize:9,color:C.red,cursor:"pointer" }}>{s.value?"Edit":"Add"}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Reviews */}
+            <div style={{ paddingTop:20,paddingBottom:20,borderBottom:`1px solid ${C.rule}` }}>
+              <Lbl>Client reviews</Lbl>
+              {[["Google","4.9","(58 reviews)"],["Experience.com","4.7","(34 reviews)"]].map(([s,r,c])=>(
+                <div key={s} style={{ display:"flex",alignItems:"center",gap:10,marginBottom:10 }}>
+                  <span style={{ ...T.label,fontSize:9,color:C.muted,minWidth:110 }}>{s}</span>
+                  <span style={{ color:"#F59E0B",fontSize:12 }}>★★★★★</span>
+                  <span style={{ ...T.subhead,fontSize:12,color:C.ink }}>{r}</span>
+                  <span style={{ ...T.caption,fontSize:11,color:C.muted }}>{c}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Learn CTA in profile */}
+            <div style={{ padding:"20px 0",borderBottom:`1px solid ${C.rule}` }}>
+              <Lbl>Continuing Education</Lbl>
+              <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center" }}>
+                <div style={{ ...T.body,fontSize:13,color:C.body }}>CE hours due: Dec 31, 2025</div>
+                <button onClick={()=>setTab("learn")} style={{ background:"none",border:"none",...T.label,fontSize:9,color:C.red,cursor:"pointer" }}>View courses →</button>
+              </div>
+            </div>
+
+            <div style={{ paddingTop:20 }}>
+              <button onClick={onSignOut} style={{ background:"none",border:`1px solid ${C.rule}`,borderRadius:4,padding:"12px",width:"100%",cursor:"pointer",...T.label,fontSize:10,color:C.muted }}>Sign out</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <BottomNav tabs={TABS} active={tab} onTab={setTab}/>
+    </div>
+  );
+}
+
+// ─── COMPANY ONBOARD ──────────────────────────────────────────────────────────
+function CompanyOnboard({ onDone, onDonePinnacle }) {
+  const [step, setStep] = useState("build");
+  const [nmls, setNmls] = useState("");
+  const [checking, setChecking] = useState(false);
+  const [form, setForm] = useState({
+    name:"", type:"Independent Broker", remote:"Hybrid", culture:"",
+    hiring:[], compOffered:[], minVolume:"", loanTypes:[], states:[],
+  });
+  const hiringOpts = ["Loan Officers","LOAs","Processors","Underwriters","Branch Managers","Admin"];
+  const toggleField = (field, r) => setForm(f=>({ ...f, [field]:f[field].includes(r)?f[field].filter(x=>x!==r):[...f[field],r] }));
+
+  const BackBtn = ({ to }) => (
+    <button onClick={()=>setStep(to)} style={{ background:"none",border:"none",color:C.red,fontSize:22,cursor:"pointer",padding:"0 4px 0 0",lineHeight:1 }}>&#8592;</button>
+  );
+
+  const checkNmls = () => {
+    setChecking(true);
+    setTimeout(()=>{
+      setChecking(false);
+      if (nmls === "3030") { setStep("approved"); }
+      else { setStep("grace"); }
+    }, 2000);
+  };
+
+  if (step==="build") return (
+    <div style={{ minHeight:"100vh",background:C.white,padding:"52px 28px 120px" }}>
+      <Logo/>
+      <div style={{ marginTop:40 }}>
+        <div style={{ ...T.label,fontSize:10,color:C.red,marginBottom:14 }}>Company Profile — Step 1 of 2</div>
+        <div style={{ ...T.display,fontSize:34,color:C.ink,lineHeight:.95,marginBottom:14 }}>Tell candidates<br/>your story.</div>
+        <p style={{ ...T.body,fontSize:14,color:C.body,lineHeight:1.7,marginBottom:36 }}>
+          Full access for 14 days while we verify your RocketPro partnership in the background.
+        </p>
+        <div style={{ display:"flex",flexDirection:"column",gap:26 }}>
+          <div>
+            <Lbl>Company name</Lbl>
+            <input value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} placeholder="e.g. Summit Mortgage Partners"
+              style={{ width:"100%",background:"transparent",border:"none",outline:"none",borderBottom:`2px solid ${form.name?C.red:C.rule}`,...T.body,fontSize:18,color:C.ink,padding:"8px 0",boxSizing:"border-box" }}/>
+          </div>
+          <div>
+            <Lbl>Company type</Lbl>
+            <div style={{ display:"flex",flexWrap:"wrap",gap:7 }}>
+              {["Independent Broker","Credit Union","Bank","IMB"].map(t=>(
+                <button key={t} onClick={()=>setForm(f=>({...f,type:t}))} style={{ padding:"9px 14px",background:form.type===t?C.ink:"transparent",color:form.type===t?C.white:C.muted,border:`1px solid ${form.type===t?C.ink:C.rule}`,borderRadius:4,...T.label,fontSize:9,cursor:"pointer" }}>{t}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <Lbl>Work style offered</Lbl>
+            <div style={{ display:"flex",gap:7 }}>
+              {["Remote","Hybrid","In-office"].map(t=>(
+                <button key={t} onClick={()=>setForm(f=>({...f,remote:t}))} style={{ flex:1,padding:"10px",background:form.remote===t?C.ink:"transparent",color:form.remote===t?C.white:C.muted,border:`1px solid ${form.remote===t?C.ink:C.rule}`,borderRadius:4,...T.label,fontSize:9,cursor:"pointer" }}>{t}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <Lbl>Currently hiring for</Lbl>
+            <div style={{ display:"flex",flexWrap:"wrap",gap:7 }}>
+              {hiringOpts.map(r=>(
+                <button key={r} onClick={()=>toggleField("hiring",r)} style={{ padding:"9px 14px",background:form.hiring.includes(r)?C.red:"transparent",color:form.hiring.includes(r)?C.white:C.muted,border:`1px solid ${form.hiring.includes(r)?C.red:C.rule}`,borderRadius:4,...T.label,fontSize:9,cursor:"pointer" }}>{r}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <Lbl>Why join your team?</Lbl>
+            <textarea value={form.culture} onChange={e=>setForm(f=>({...f,culture:e.target.value}))} rows={3} placeholder="Tell candidates what makes your shop the right place to build a career"
+              style={{ width:"100%",background:"transparent",border:"none",outline:"none",borderBottom:`2px solid ${form.culture?C.red:C.rule}`,...T.body,fontSize:14,color:C.ink,padding:"8px 0",resize:"none",lineHeight:1.6,boxSizing:"border-box" }}/>
+          </div>
+        </div>
+      </div>
+      <div style={{ position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:420,padding:"16px 24px 32px",background:C.white,borderTop:`1px solid ${C.rule}` }}>
+        <Btn v="red" onClick={()=>setStep("comp")} disabled={!form.name.trim()}>Continue</Btn>
+      </div>
+    </div>
+  );
+
+  if (step==="comp") return (
+    <div style={{ minHeight:"100vh",background:C.white,padding:"52px 28px 120px" }}>
+      <div style={{ display:"flex",alignItems:"center",gap:12,marginBottom:32 }}>
+        <BackBtn to="build"/>
+        <Logo size="sm"/>
+        <div style={{ marginLeft:"auto",...T.label,fontSize:9,color:C.muted }}>Step 2 of 2</div>
+      </div>
+      <div style={{ ...T.label,fontSize:10,color:C.red,marginBottom:14 }}>Compensation and Requirements</div>
+      <div style={{ ...T.display,fontSize:34,color:C.ink,lineHeight:.95,marginBottom:28 }}>What you offer.</div>
+      <div style={{ display:"flex",flexDirection:"column",gap:26 }}>
+        <div>
+          <Lbl>Compensation structures offered (select all)</Lbl>
+          <div style={{ display:"flex",flexWrap:"wrap",gap:7 }}>
+            {["W2 Salary","1099 Commission","Base + Commission","Revenue Share","Hourly","Negotiable"].map(c=>(
+              <button key={c} onClick={()=>toggleField("compOffered",c)} style={{ padding:"9px 14px",background:form.compOffered.includes(c)?C.red:"transparent",color:form.compOffered.includes(c)?C.white:C.muted,border:`1px solid ${form.compOffered.includes(c)?C.red:C.rule}`,borderRadius:4,...T.label,fontSize:9,cursor:"pointer" }}>{c}</button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <Lbl>Minimum production requirement</Lbl>
+          <div style={{ display:"flex",flexWrap:"wrap",gap:7 }}>
+            {["None","$500K/mo","$1M/mo","$2M/mo","$3M/mo","$5M+/mo"].map(v=>(
+              <button key={v} onClick={()=>setForm(f=>({...f,minVolume:v}))} style={{ padding:"9px 14px",background:form.minVolume===v?C.ink:"transparent",color:form.minVolume===v?C.white:C.muted,border:`1px solid ${form.minVolume===v?C.ink:C.rule}`,borderRadius:4,...T.label,fontSize:9,cursor:"pointer" }}>{v}</button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <Lbl>Loan types funded</Lbl>
+          <div style={{ display:"flex",flexWrap:"wrap",gap:7 }}>
+            {["Conventional","FHA","VA","USDA","Jumbo","Non-QM","Construction","HELOC"].map(l=>(
+              <button key={l} onClick={()=>toggleField("loanTypes",l)} style={{ padding:"9px 14px",background:form.loanTypes.includes(l)?C.navy:"transparent",color:form.loanTypes.includes(l)?C.white:C.muted,border:`1px solid ${form.loanTypes.includes(l)?C.navy:C.rule}`,borderRadius:4,...T.label,fontSize:9,cursor:"pointer" }}>{l}</button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <Lbl>States you operate in</Lbl>
+          <StateDropdown selected={form.states} onChange={v=>setForm(f=>({...f,states:v}))}/>
+        </div>
+        <div>
+          <Lbl>Company NMLS ID</Lbl>
+          <input value={nmls} onChange={e=>setNmls(e.target.value.replace(/\D/g,"").slice(0,10))}
+            placeholder="e.g. 3030"
+            style={{ width:"100%",background:"transparent",border:"none",outline:"none",borderBottom:`2px solid ${nmls?C.red:C.rule}`,...T.body,fontSize:20,color:C.ink,padding:"8px 0",boxSizing:"border-box",letterSpacing:"0.04em" }}/>
+          <div style={{ ...T.caption,fontSize:12,color:C.ghost,marginTop:6 }}>Enter 3030 to see the verified partner workflow.</div>
+        </div>
+      </div>
+      <div style={{ position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:420,padding:"16px 24px 32px",background:C.white,borderTop:`1px solid ${C.rule}` }}>
+        {checking ? (
+          <div style={{ textAlign:"center",padding:"12px 0" }}>
+            <div style={{ display:"flex",justifyContent:"center",gap:8,marginBottom:8 }}>
+              {[0,1,2].map(i=><div key={i} style={{ width:9,height:9,borderRadius:"50%",background:C.red,opacity:0.2+i*0.4 }}/>)}
+            </div>
+            <div style={{ ...T.label,fontSize:9,color:C.muted }}>Verifying partnership...</div>
+          </div>
+        ) : (
+          <Btn v="red" onClick={nmls ? checkNmls : ()=>setStep("grace")} disabled={!form.compOffered.length}>
+            {nmls ? "Verify and create profile" : "Create profile and start browsing"}
+          </Btn>
+        )}
+      </div>
+    </div>
+  );
+
+  if (step==="approved") return (
+    <div style={{ minHeight:"100vh",background:C.white,display:"flex",flexDirection:"column" }}>
+      <div style={{ height:4,background:`linear-gradient(90deg, ${C.gold} 0%, #E8D070 50%, ${C.gold} 100%)` }}/>
+      <div style={{ flex:1,padding:"48px 28px 48px",display:"flex",flexDirection:"column",justifyContent:"center" }}>
+        <div style={{ width:72,height:72,borderRadius:16,background:C.goldSoft,border:`2px solid ${C.goldRule}`,display:"flex",alignItems:"center",justifyContent:"center",marginBottom:24 }}>
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+            <circle cx="18" cy="18" r="17" stroke={C.gold} strokeWidth="2" fill="none"/>
+            <path d="M10 18L15 23L26 13" stroke={C.gold} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+        <div style={{ ...T.label,fontSize:10,color:C.gold,marginBottom:12 }}>RocketPro Partner Verified</div>
+        <div style={{ ...T.display,fontSize:38,color:C.ink,lineHeight:.92,marginBottom:14 }}>Welcome,<br/>partner.</div>
+        <p style={{ ...T.body,fontSize:15,color:C.body,lineHeight:1.7,marginBottom:28 }}>
+          Your NMLS ID matches a verified RocketPro partnership. Your account has been automatically upgraded.
+        </p>
+        <div style={{ display:"flex",flexDirection:"column",gap:0,marginBottom:36 }}>
+          {[
+            { badge:"Pinnacle", text:"Full access, free forever." },
+            { badge:"Verified", text:"RocketPro Partner badge on your profile." },
+            { badge:"Priority", text:"Priority placement in candidate search." },
+            { badge:"ROI",      text:"Orbit Impact dashboard live from day one." },
+          ].map((item,i)=>(
+            <div key={i} style={{ padding:"16px 0",borderBottom:`1px solid ${C.rule}`,display:"flex",gap:14,alignItems:"flex-start" }}>
+              <div style={{ background:C.goldSoft,border:`1px solid ${C.goldRule}`,borderRadius:20,padding:"3px 9px",flexShrink:0,marginTop:2 }}>
+                <div style={{ ...T.label,fontSize:8,color:C.gold }}>{item.badge.toUpperCase()}</div>
+              </div>
+              <div style={{ ...T.body,fontSize:14,color:C.body }}>{item.text}</div>
+            </div>
+          ))}
+        </div>
+        <Btn v="gold" onClick={onDonePinnacle}>Enter Orbit as a Pinnacle Partner</Btn>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ minHeight:"100vh",background:C.white,padding:"52px 28px 48px",display:"flex",flexDirection:"column" }}>
+      <Logo/>
+      <div style={{ flex:1,display:"flex",flexDirection:"column",justifyContent:"center" }}>
+        <div style={{ ...T.label,fontSize:10,color:C.green,marginBottom:14 }}>You're in</div>
+        <div style={{ ...T.display,fontSize:40,color:C.ink,lineHeight:.92,marginBottom:14 }}>Start browsing<br/>talent.</div>
+        <p style={{ ...T.body,fontSize:15,color:C.body,lineHeight:1.7,marginBottom:28 }}>
+          Your profile is live. Full access while we verify your RocketPro partnership.
+        </p>
+        <div style={{ background:C.warm,borderRadius:6,padding:"16px 18px",marginBottom:36,border:`1px solid ${C.rule}` }}>
+          <Lbl>Good to know</Lbl>
+          <p style={{ ...T.body,fontSize:13,color:C.body,lineHeight:1.6 }}>
+            After your 14-day trial, full access continues with a RocketPro partnership. We'll reach out before anything changes.
+          </p>
+        </div>
+        <Btn v="red" onClick={onDone}>Browse talent now</Btn>
+      </div>
+    </div>
+  );
+}
+
+// ─── COMPANY MAIN APP ─────────────────────────────────────────────────────────
+function CompanyApp({ isPinnacle=false, onSignOut }) {
+  const [tab, setTab]           = useState("browse");
+  const [candIdx, setCandIdx]   = useState(0);
+  const [pipeline, setPipeline] = useState([
+    { ...CANDIDATES[0], status:"interested" },
+    { ...CANDIDATES[2], status:"interview"  },
+  ]);
+  const [showMatch, setShowMatch]   = useState(null);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [chatParty, setChatParty]   = useState(null);
+  const [schedParty, setSchedParty] = useState(null);
+  const [showSched, setShowSched]   = useState(false);
+  const [interviews, setInterviews] = useState([]);
+
+  const deck = CANDIDATES.slice(candIdx);
+  const TABS = [
+    { id:"browse",    label:"Browse" },
+    { id:"pipeline",  label:"Pipeline" },
+    { id:"community", label:"Community" },
+    { id:"profile",   label:"Company" },
+  ];
+
+  const swipe = (dir, c) => {
+    if (dir==="right") {
+      if (!isPinnacle) { setShowPaywall(true); setPipeline(p=>[...p,{...c,status:"new"}]); }
+      else { setPipeline(p=>[...p,{...c,status:"interested"}]); setShowMatch(c); }
+    }
+    setCandIdx(i=>i+1);
+  };
+
+  const [posts, setPosts] = useState(COMMUNITY_POSTS);
+  const [newsTab, setNewsTab] = useState("feed");
+  const [catFilter, setCatFilter] = useState("All");
+  const [compose, setCompose] = useState(false);
+  const [newPost, setNewPost] = useState("");
+  const [openPost, setOpenPost] = useState(null);
+  const toggleLike = id => setPosts(prev=>prev.map(p=>p.id===id?{...p,liked:!p.liked,likes:p.liked?p.likes-1:p.likes+1}:p));
+  const submitPost = () => {
+    if(!newPost.trim()) return;
+    setPosts(prev=>[{ id:"n-"+Date.now(),author:"Branch Mgr · Dallas",role:"Branch Manager, 9 yrs",time:"Just now",cat:"Career",text:newPost.trim(),likes:0,replies:0,liked:false },...prev]);
+    setNewPost(""); setCompose(false);
+  };
+
+  if (chatParty) return (
+    <ChatScreen party={chatParty} onBack={()=>setChatParty(null)}
+      onSchedule={p=>{ setChatParty(null); setSchedParty(p); setShowSched(true); }}
+      isCompany={true}/>
+  );
+
+  if (openPost) return (
+    <PostDetailScreen post={openPost} onBack={()=>setOpenPost(null)} isCompany={true}/>
+  );
+
+  const STATUS = {
+    new:       { label:"New",        color:C.ink,   bg:C.warm },
+    interested:{ label:"Interested", color:C.red,   bg:C.redSoft },
+    interview: { label:"Interview",  color:C.green, bg:C.greenSoft },
+  };
+
+  return (
+    <div style={{ paddingBottom:80,minHeight:"100vh",background:C.off,maxWidth:420,margin:"0 auto" }}>
+
+      {/* ── BROWSE ── */}
+      {tab==="browse" && (
+        <div style={{ display:"flex",flexDirection:"column",height:"100vh" }}>
+          <div style={{ background:C.white,padding:"52px 22px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`1px solid ${C.rule}` }}>
+            <Logo size="sm"/>
+            <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+              {isPinnacle && <div style={{ display:"inline-flex",alignItems:"center",gap:5,background:C.goldSoft,border:`1px solid ${C.goldRule}`,borderRadius:20,padding:"4px 11px" }}><div style={{ width:7,height:7,borderRadius:"50%",background:C.gold }}/><div style={{ ...T.label,fontSize:8,color:C.gold }}>Pinnacle</div></div>}
+              <div style={{ ...T.label,fontSize:9,color:C.muted }}>{deck.length} left</div>
+            </div>
+          </div>
+
+          {deck.length===0 ? (
+            <div style={{ flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center",padding:40 }}>
+              <div style={{ ...T.display,fontSize:30,color:C.ink,lineHeight:1,marginBottom:10 }}>You've seen<br/>everyone.</div>
+              <Btn v="soft" onClick={()=>setTab("pipeline")} s={{ maxWidth:220,marginTop:16 }}>See my pipeline</Btn>
+            </div>
+          ) : (
+            <>
+              <div style={{ flex:1,position:"relative",padding:"14px 18px 0" }}>
+                {deck.length>1 && <div style={{ position:"absolute",inset:"18px 26px 0",background:C.white,borderRadius:8,border:`1px solid ${C.rule}`,transform:"scale(.97) translateY(6px)",zIndex:1 }}/>}
+                {deck.slice(0,2).reverse().map((c,i)=>(
+                  <CandidateCard key={c.id+"-"+i} c={c} isTop={i===Math.min(deck.length,2)-1} onSwipe={swipe}/>
+                ))}
+              </div>
+              <div style={{ background:C.white,borderTop:`1px solid ${C.rule}`,padding:"14px 0 6px",display:"flex",justifyContent:"center",alignItems:"center",gap:16 }}>
+                <button onClick={()=>swipe("left",deck[0])} style={{ width:52,height:52,borderRadius:"50%",background:C.white,border:`1px solid ${C.rule}`,fontSize:20,color:C.ghost,cursor:"pointer" }}>✕</button>
+                <button onClick={()=>swipe("right",deck[0])} style={{ width:66,height:66,borderRadius:"50%",background:C.red,border:"none",fontSize:24,color:C.white,cursor:"pointer",boxShadow:"0 4px 20px rgba(232,37,26,.4)" }}>♥</button>
+                <button style={{ width:52,height:52,borderRadius:"50%",background:C.white,border:`1px solid ${C.rule}`,fontSize:20,color:C.ghost,cursor:"pointer" }}>★</button>
+              </div>
+            </>
+          )}
+
+          {showMatch && (
+            <MatchModal party={showMatch} isCompany={true} locked={false}
+              onChat={p=>{ setShowMatch(null); setChatParty(p); }}
+              onSchedule={p=>{ setShowMatch(null); setSchedParty(p); setShowSched(true); }}
+              onClose={()=>setShowMatch(null)}/>
+          )}
+          {showPaywall && (
+            <div style={{ position:"fixed",inset:0,background:"rgba(17,17,16,.82)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200 }}>
+              <div style={{ background:C.white,borderRadius:"12px 12px 0 0",padding:"32px 24px 48px",width:"100%",maxWidth:420 }}>
+                <div style={{ ...T.label,fontSize:10,color:C.red,marginBottom:12 }}>Partnership Required</div>
+                <div style={{ ...T.display,fontSize:32,color:C.ink,lineHeight:.95,marginBottom:10 }}>
+                  "We grow the<br/>whole pie."
+                </div>
+                <p style={{ ...T.body,fontSize:14,color:C.body,lineHeight:1.65,marginBottom:28 }}>
+                  Connecting with candidates requires a RocketPro partnership — which also means better products and pricing for every loan you close.
+                </p>
+                <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+                  <a href="https://www.rocketpro.com" style={{ textDecoration:"none",display:"block" }}>
+                    <Btn v="red">Become a RocketPro partner →</Btn>
+                  </a>
+                  <div style={{ background:C.white,borderRadius:4,padding:"16px 18px",border:`1px solid ${C.rule}` }}>
+                    <div style={{ ...T.subhead,fontSize:14,color:C.ink,marginBottom:4 }}>Talk to a Partner Development Manager</div>
+                    <a href="tel:18005551234" style={{ ...T.label,fontSize:11,color:C.red,textDecoration:"none" }}>1-800-ROCKET-1</a>
+                  </div>
+                  <button onClick={()=>setShowPaywall(false)} style={{ background:"none",border:"none",...T.caption,fontSize:13,color:C.ghost,padding:"8px",cursor:"pointer" }}>Continue browsing</button>
+                </div>
+              </div>
+            </div>
+          )}
+          {showSched && schedParty && (
+            <ScheduleModal party={schedParty}
+              onClose={()=>{ setShowSched(false); setSchedParty(null); }}
+              onConfirm={iv=>setInterviews(prev=>[{ id:"iv-"+Date.now(),...iv },...prev])}/>
+          )}
+        </div>
+      )}
+
+      {/* ── PIPELINE ── */}
+      {tab==="pipeline" && (
+        <div style={{ minHeight:"100vh",background:C.white }}>
+          {/* Pinnacle ROI — the Austin moment */}
+          {isPinnacle && (
+            <div style={{ background:C.ink }}>
+              {/* Header */}
+              <div style={{ padding:"52px 24px 24px" }}>
+                <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20 }}>
+                  <div>
+                    <Logo dark size="sm"/>
+                    <div style={{ ...T.display,fontSize:22,color:C.white,lineHeight:1,marginTop:16 }}>Summit Mortgage</div>
+                    <div style={{ ...T.caption,fontSize:12,color:"rgba(255,255,255,.4)",marginTop:4 }}>Dallas, TX · Pinnacle Partner</div>
+                  </div>
+                  <div style={{ display:"inline-flex",alignItems:"center",gap:5,background:C.goldSoft,border:`1px solid ${C.goldRule}`,borderRadius:20,padding:"5px 12px" }}>
+                    <div style={{ width:7,height:7,borderRadius:"50%",background:C.gold }}/><div style={{ ...T.label,fontSize:8,color:C.gold }}>Pinnacle</div>
+                  </div>
+                </div>
+
+                {/* 90-day impact numbers */}
+                <div style={{ background:"rgba(201,146,42,.12)",borderRadius:6,padding:"18px",border:`1px solid rgba(232,197,122,.2)`,marginBottom:16 }}>
+                  <div style={{ ...T.label,fontSize:8,color:C.gold,marginBottom:14 }}>Orbit Impact · Last 90 Days</div>
+                  <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:0 }}>
+                    {[{n:"$47M",l:"Loans closed",sub:"by Orbit hires",d:"+12%"},{n:"6",l:"Hires made",sub:"via Orbit",d:"90 days"},{n:"24",l:"Matches",sub:"in pipeline",d:"8 new"}].map((s,i)=>(
+                      <div key={s.l} style={{ paddingRight:i<2?14:0,borderRight:i<2?`1px solid rgba(232,197,122,.15)`:"none",marginRight:i<2?14:0 }}>
+                        <div style={{ ...T.display,fontSize:26,color:C.white,lineHeight:1,marginBottom:2 }}>{s.n}</div>
+                        <div style={{ ...T.label,fontSize:8,color:"rgba(255,255,255,.45)" }}>{s.l}</div>
+                        <div style={{ ...T.caption,fontSize:10,color:"rgba(255,255,255,.3)",marginBottom:4 }}>{s.sub}</div>
+                        <div style={{ ...T.label,fontSize:8,color:C.gold }}>{s.d}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* THE ROI MATH — the number Austin needs */}
+                <div style={{ background:"rgba(232,37,26,.12)",borderRadius:6,padding:"18px",border:`1px solid rgba(232,37,26,.2)` }}>
+                  <div style={{ ...T.label,fontSize:8,color:C.red,marginBottom:10 }}>Why Orbit Matters to RocketPro</div>
+                  <div style={{ display:"flex",flexDirection:"column",gap:8,marginBottom:14 }}>
+                    {[
+                      { label:"Avg. LO closes / month",       value:"$3.2M" },
+                      { label:"Avg. LO tenure at broker shop", value:"3.2 yrs" },
+                      { label:"Lifetime volume per hire",      value:"$122M" },
+                      { label:"Estimated loans thru RocketPro",value:"$85M+" },
+                    ].map((row,i)=>(
+                      <div key={i} style={{ display:"flex",justifyContent:"space-between",alignItems:"center",paddingBottom:i<3?8:0,borderBottom:i<3?`1px solid rgba(232,37,26,.1)`:"none" }}>
+                        <div style={{ ...T.body,fontSize:12,color:"rgba(255,255,255,.55)" }}>{row.label}</div>
+                        <div style={{ ...T.subhead,fontSize:14,color:i===3?C.red:C.white }}>{row.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* The punchline */}
+                  <div style={{ borderTop:`1px solid rgba(232,37,26,.2)`,paddingTop:12 }}>
+                    <div style={{ ...T.label,fontSize:8,color:"rgba(255,255,255,.35)",marginBottom:6 }}>The punchline</div>
+                    <div style={{ ...T.heading,fontSize:17,color:C.white,lineHeight:1.25 }}>
+                      One Orbit hire generates an estimated <span style={{ color:C.red }}>$85M</span> in lifetime RocketPro volume.
+                    </div>
+                    <div style={{ ...T.caption,fontSize:11,color:"rgba(255,255,255,.3)",marginTop:8 }}>
+                      Based on industry averages. Your actual results may vary.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!isPinnacle && (
+            <div style={{ padding:"52px 24px 24px",borderBottom:`1px solid ${C.rule}` }}>
+              <div style={{ ...T.label,fontSize:10,color:C.red,marginBottom:10 }}>Pipeline</div>
+              <div style={{ ...T.display,fontSize:34,color:C.ink,lineHeight:.95 }}>Your hiring<br/>pipeline.</div>
+            </div>
+          )}
+
+          {/* Upcoming interviews */}
+          {interviews.length>0 && (
+            <div style={{ padding:"20px 24px",borderBottom:`1px solid ${C.rule}` }}>
+              <Lbl>Upcoming Interviews · {interviews.length}</Lbl>
+              {interviews.map(iv=>(
+                <div key={iv.id} style={{ background:C.ink,borderRadius:6,padding:"16px 18px",marginBottom:8 }}>
+                  <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8 }}>
+                    <div style={{ ...T.display,fontSize:18,color:C.white,lineHeight:1 }}>{iv.slot||iv.party?.slot}</div>
+                    <div style={{ ...T.label,fontSize:8,color:C.green,background:"rgba(10,122,74,.15)",padding:"4px 9px",borderRadius:20,border:"1px solid rgba(10,122,74,.25)" }}>Confirmed</div>
+                  </div>
+                  <div style={{ ...T.subhead,fontSize:13,color:"rgba(255,255,255,.65)",marginBottom:12 }}>{iv.party?.alias||iv.party?.name}</div>
+                  <div style={{ display:"flex",gap:8 }}>
+                    <div style={{ flex:1,padding:"9px",background:C.green,borderRadius:4,...T.label,fontSize:9,color:C.white,textAlign:"center" }}>Join Zoom</div>
+                    <button style={{ flex:1,padding:"9px",background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.12)",borderRadius:4,...T.label,fontSize:9,color:"rgba(255,255,255,.5)",cursor:"pointer" }}>Reschedule</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Pipeline stages */}
+          <div style={{ padding:"0 24px" }}>
+            {[
+              { key:"new",        label:"New Matches",     items:pipeline.filter(c=>c.status==="new") },
+              { key:"interested", label:"In Conversation", items:pipeline.filter(c=>c.status==="interested") },
+              { key:"interview",  label:"Interview Set",   items:pipeline.filter(c=>c.status==="interview") },
+            ].map(stage=>(
+              <div key={stage.key} style={{ paddingTop:24,paddingBottom:8 }}>
+                <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:16 }}>
+                  <div style={{ ...T.label,fontSize:9,color:C.muted }}>{stage.label.toUpperCase()}</div>
+                  <div style={{ ...T.label,fontSize:9,color:C.red }}>{stage.items.length}</div>
+                </div>
+                {stage.items.length===0 ? (
+                  <div style={{ padding:"16px 0",borderTop:`1px solid ${C.rule}` }}>
+                    <div style={{ ...T.caption,fontSize:13,color:C.ghost }}>None yet</div>
+                  </div>
+                ) : stage.items.map(c=>(
+                  <div key={c.id} style={{ paddingTop:16,paddingBottom:16,borderTop:`1px solid ${C.rule}` }}>
+                    <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8 }}>
+                      <div>
+                        <div style={{ ...T.subhead,fontSize:15,color:C.ink,marginBottom:2 }}>{c.alias}</div>
+                        <div style={{ ...T.caption,fontSize:12,color:C.muted }}>{c.role} · {c.exp} · {c.style}</div>
+                      </div>
+                      <div style={{ ...T.label,fontSize:8,color:STATUS[c.status].color,background:STATUS[c.status].bg,padding:"4px 9px",borderRadius:20,flexShrink:0,marginLeft:12 }}>{STATUS[c.status].label.toUpperCase()}</div>
+                    </div>
+                    <div style={{ ...T.caption,fontSize:12,color:C.muted,marginBottom:12 }}>{c.volume} · {c.comp}</div>
+                    {!isPinnacle ? (
+                      <a href="https://www.rocketpro.com" style={{ textDecoration:"none",display:"block" }}>
+                        <Btn v="soft" s={{ fontSize:12,padding:"10px" }}>Partner with RocketPro to connect →</Btn>
+                      </a>
+                    ) : (
+                      <div style={{ display:"flex",gap:8 }}>
+                        <Btn v="outline" onClick={()=>setChatParty(c)} s={{ fontSize:12,padding:"10px" }}>Chat</Btn>
+                        <Btn v="red" onClick={()=>{ setSchedParty(c); setShowSched(true); }} s={{ fontSize:12,padding:"10px" }}>Schedule</Btn>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+          {showSched && schedParty && (
+            <ScheduleModal party={schedParty}
+              onClose={()=>{ setShowSched(false); setSchedParty(null); }}
+              onConfirm={iv=>setInterviews(prev=>[{ id:"iv-"+Date.now(),...iv },...prev])}/>
+          )}
+        </div>
+      )}
+
+      {/* ── COMMUNITY (same as LO) ── */}
+      {tab==="community" && (
+        <div style={{ minHeight:"100vh",background:C.white }}>
+          <div style={{ padding:"52px 24px 0",borderBottom:`1px solid ${C.rule}` }}>
+            <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-end",marginBottom:20 }}>
+              <div>
+                <div style={{ ...T.label,fontSize:10,color:C.red,marginBottom:10 }}>Community</div>
+                <div style={{ ...T.display,fontSize:30,color:C.ink,lineHeight:.95 }}>The pulse<br/>of mortgage.</div>
+              </div>
+              {newsTab==="feed" && <button onClick={()=>setCompose(true)} style={{ padding:"10px 16px",background:C.red,border:"none",borderRadius:4,...T.label,fontSize:9,color:C.white,cursor:"pointer",flexShrink:0,marginBottom:4 }}>+ Post</button>}
+            </div>
+            <div style={{ display:"flex" }}>
+              {[{id:"feed",label:"Community"},{id:"news",label:"Industry News"}].map(t=>(
+                <button key={t.id} onClick={()=>setNewsTab(t.id)} style={{ padding:"11px 20px 13px",background:"none",border:"none",cursor:"pointer",...T.label,fontSize:9,color:newsTab===t.id?C.ink:C.muted,borderBottom:newsTab===t.id?`2px solid ${C.red}`:"2px solid transparent" }}>{t.label}</button>
+              ))}
+            </div>
+          </div>
+          {newsTab==="feed" && <>
+            <div style={{ padding:"14px 24px",borderBottom:`1px solid ${C.rule}`,display:"flex",gap:7,overflowX:"auto" }}>
+              {["All","Win","Career","Advice","Question"].map(c=>(
+                <button key={c} onClick={()=>setCatFilter(c)} style={{ padding:"6px 14px",background:"transparent",flexShrink:0,border:`1px solid ${catFilter===c?C.ink:C.rule}`,borderRadius:20,cursor:"pointer",...T.label,fontSize:8,color:catFilter===c?C.ink:C.muted }}>{c.toUpperCase()}</button>
+              ))}
+            </div>
+            {(catFilter==="All"?posts:posts.filter(p=>p.cat===catFilter)).map(post=>(
+              <div key={post.id} style={{ padding:"22px 24px",borderBottom:`1px solid ${C.rule}` }}>
+                <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12 }}>
+                  <div>
+                    <div style={{ ...T.subhead,fontSize:13,color:C.ink }}>{post.author}</div>
+                    <div style={{ ...T.caption,fontSize:11,color:C.muted }}>{post.role} · {post.time}</div>
+                  </div>
+                  <div style={{ ...T.label,fontSize:8,color:post.cat==="Win"?C.red:post.cat==="Advice"?C.green:C.muted,background:post.cat==="Win"?C.redSoft:post.cat==="Advice"?C.greenSoft:C.warm,padding:"3px 9px",borderRadius:20,flexShrink:0,marginLeft:8 }}>{post.cat.toUpperCase()}</div>
+                </div>
+                <p onClick={()=>setOpenPost(post)} style={{ ...T.body,fontSize:14,color:C.body,lineHeight:1.65,marginBottom:14,cursor:"pointer" }}>{post.text}</p>
+                <div style={{ display:"flex",alignItems:"center",gap:20 }}>
+                  <button onClick={()=>toggleLike(post.id)} style={{ background:"none",border:"none",display:"flex",alignItems:"center",gap:6,padding:0,cursor:"pointer" }}>
+                    <span style={{ fontSize:16,color:post.liked?C.red:C.ghost }}>{post.liked?"♥":"♡"}</span>
+                    <span style={{ ...T.label,fontSize:9,color:post.liked?C.red:C.muted }}>{post.likes}</span>
+                  </button>
+                  <button onClick={()=>setOpenPost(post)} style={{ background:"none",border:"none",display:"flex",alignItems:"center",gap:6,padding:0,cursor:"pointer" }}>
+                    <span style={{ ...T.label,fontSize:9,color:C.muted }}>{(POST_REPLIES[post.id]||[]).length||post.replies} replies</span>
+                    <span style={{ ...T.label,fontSize:9,color:C.red }}>View &#8594;</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </>}
+          {newsTab==="news" && <>
+            {NEWS.map(a=>(
+              <div key={a.headline} style={{ padding:"20px 24px",borderBottom:`1px solid ${C.rule}`,cursor:"pointer" }}>
+                <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8 }}>
+                  <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+                    <div style={{ ...T.label,fontSize:8,color:C.red }}>{a.source.toUpperCase()}</div>
+                    <div style={{ width:2,height:2,borderRadius:"50%",background:C.rule }}/>
+                    <div style={{ ...T.label,fontSize:8,color:C.muted }}>{a.time.toUpperCase()}</div>
+                  </div>
+                  <div style={{ ...T.label,fontSize:8,color:C.muted,background:C.warm,padding:"3px 9px",borderRadius:20 }}>{a.cat.toUpperCase()}</div>
+                </div>
+                <div style={{ ...T.heading,fontSize:15,color:C.ink,lineHeight:1.3,marginBottom:10 }}>{a.headline}</div>
+                <div style={{ ...T.label,fontSize:9,color:C.red }}>Read article</div>
+              </div>
+            ))}
+          </>}
+          {compose && (
+            <div style={{ position:"fixed",inset:0,background:"rgba(17,17,16,.72)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200 }}>
+              <div style={{ background:C.white,borderRadius:"12px 12px 0 0",padding:"28px 24px 48px",width:"100%",maxWidth:420 }}>
+                <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20 }}>
+                  <div style={{ ...T.heading,fontSize:18,color:C.ink }}>Share with the community</div>
+                  <button onClick={()=>setCompose(false)} style={{ background:"none",border:"none",color:C.muted,fontSize:24,cursor:"pointer" }}>×</button>
+                </div>
+                <textarea value={newPost} onInput={e=>setNewPost(e.target.value)} placeholder="Share a win, ask a question, start a conversation…" rows={5}
+                  style={{ width:"100%",background:"transparent",border:"none",borderBottom:`1px solid ${C.rule}`,...T.body,fontSize:14,color:C.ink,outline:"none",resize:"none",lineHeight:1.65,boxSizing:"border-box",marginBottom:20,padding:"0" }} autoFocus/>
+                <Btn v="red" onClick={submitPost} disabled={!newPost.trim()}>Post to Community</Btn>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── COMPANY PROFILE ── */}
+      {tab==="profile" && (
+        <div style={{ minHeight:"100vh",background:C.white }}>
+          <div style={{ background:C.ink,padding:"52px 24px 28px" }}>
+            <Logo dark size="sm"/>
+            <div style={{ ...T.display,fontSize:28,color:C.white,lineHeight:.95,marginTop:20,marginBottom:6 }}>Summit Mortgage<br/>Partners</div>
+            <div style={{ ...T.caption,fontSize:12,color:"rgba(255,255,255,.4)",marginBottom:16 }}>Dallas, TX · Independent Broker</div>
+            <div style={{ display:"flex",gap:8 }}>
+              {isPinnacle && <div style={{ display:"inline-flex",alignItems:"center",gap:5,background:C.goldSoft,border:`1px solid ${C.goldRule}`,borderRadius:20,padding:"4px 11px" }}><div style={{ width:6,height:6,borderRadius:"50%",background:C.gold }}/><div style={{ ...T.label,fontSize:8,color:C.gold }}>Pinnacle Partner</div></div>}
+              <div style={{ display:"inline-flex",alignItems:"center",gap:5,background:"rgba(232,37,26,.15)",border:"1px solid rgba(232,37,26,.3)",borderRadius:20,padding:"4px 11px" }}><div style={{ width:6,height:6,borderRadius:"50%",background:C.red }}/><div style={{ ...T.label,fontSize:8,color:C.red }}>RocketPro Partner</div></div>
+            </div>
+          </div>
+          <div style={{ padding:"0 24px" }}>
+            <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:1,background:C.rule,margin:"0 -24px",marginBottom:1 }}>
+              {[{l:"Profile Views",v:"847"},{l:"Matches",v:pipeline.length},{l:"Interviews",v:pipeline.filter(c=>c.status==="interview").length},{l:"Roles Hiring",v:"3"}].map(s=>(
+                <div key={s.l} style={{ padding:"20px 24px",background:C.white }}>
+                  <div style={{ ...T.display,fontSize:28,color:C.red,marginBottom:4 }}>{s.v}</div>
+                  <div style={{ ...T.label,fontSize:8,color:C.muted }}>{s.l.toUpperCase()}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ padding:"20px 0",borderBottom:`1px solid ${C.rule}` }}>
+              <Lbl>Currently Hiring</Lbl>
+              <div style={{ display:"flex",gap:6,flexWrap:"wrap" }}>
+                {["Loan Officers","Processors","LOAs"].map(r=><div key={r} style={{ border:`1px solid ${C.rule}`,padding:"5px 11px",borderRadius:20,...T.label,fontSize:8,color:C.body }}>{r}</div>)}
+              </div>
+            </div>
+            <div style={{ padding:"20px 0",borderBottom:`1px solid ${C.rule}` }}>
+              <Lbl>Partner Promise we live by</Lbl>
+              <div style={{ ...T.heading,fontSize:17,color:C.ink,lineHeight:1.2 }}>"We grow your brand.<br/>You grow your business."</div>
+              <div style={{ ...T.label,fontSize:8,color:C.ghost,marginTop:6 }}>Partner Promise #6 · RocketPro</div>
+            </div>
+
+            {/* Photos */}
+            <div style={{ padding:"20px 0",borderBottom:`1px solid ${C.rule}` }}>
+              <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
+                <Lbl>Photos</Lbl>
+                <button style={{ background:"none",border:"none",...T.label,fontSize:9,color:C.red,cursor:"pointer" }}>+ Add</button>
+              </div>
+              <div style={{ display:"flex",gap:8,overflowX:"auto" }}>
+                {["🏢","🤝","🎉","🏡"].map((emoji,i)=>(
+                  <div key={i} style={{ width:100,height:80,flexShrink:0,borderRadius:6,background:i===0?C.ink:C.warm,border:`1px solid ${C.rule}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:32 }}>{emoji}</div>
+                ))}
+                <div style={{ width:100,height:80,flexShrink:0,borderRadius:6,background:C.warm,border:`2px dashed ${C.rule}`,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer" }}>
+                  <div style={{ ...T.label,fontSize:9,color:C.ghost }}>+ Add</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Social links */}
+            <div style={{ padding:"20px 0",borderBottom:`1px solid ${C.rule}` }}>
+              <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
+                <Lbl>Social Profiles</Lbl>
+              </div>
+              <div style={{ display:"flex",flexDirection:"column",gap:10 }}>
+                {[
+                  { label:"LinkedIn",  icon:"in", value:"linkedin.com/company/summit-mortgage" },
+                  { label:"Instagram", icon:"ig", value:"@summitmtg" },
+                  { label:"Facebook",  icon:"fb", value:"Summit Mortgage Partners" },
+                  { label:"Website",   icon:"W",  value:"summitmortgagepartners.com" },
+                ].map(s=>(
+                  <div key={s.label} style={{ display:"flex",alignItems:"center",gap:12,padding:"11px 14px",background:C.warm,borderRadius:4,border:`1px solid ${C.rule}` }}>
+                    <div style={{ width:30,height:30,borderRadius:6,background:s.value?C.ink:C.rule,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+                      <div style={{ ...T.label,fontSize:9,color:s.value?C.white:C.ghost }}>{s.icon}</div>
+                    </div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ ...T.label,fontSize:8,color:C.muted,marginBottom:1 }}>{s.label.toUpperCase()}</div>
+                      <div style={{ ...T.body,fontSize:13,color:s.value?C.ink:C.ghost }}>{s.value||"Not added"}</div>
+                    </div>
+                    <div style={{ ...T.label,fontSize:9,color:C.red,cursor:"pointer" }}>{s.value?"Edit":"Add"}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ paddingTop:20,paddingBottom:100 }}>
+              <Btn v="ghost" onClick={onSignOut} s={{ color:C.muted }}>Sign out</Btn>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <BottomNav tabs={TABS} active={tab} onTab={setTab}/>
+    </div>
+  );
+}
+
+// ─── ROOT ─────────────────────────────────────────────────────────────────────
+function App() {
+  const [screen, setScreen] = useState("home");
+
+  return (
+    <div style={{ maxWidth:420, margin:"0 auto", minHeight:"100vh", background:C.white }}>
+      {screen==="home"            && <HomeScreen onLO={()=>setScreen("lo-onboard")} onCompany={()=>setScreen("co-onboard")} onAspiring={()=>setScreen("aspiring")} onSignIn={()=>setScreen("signin")}/>}
+      {screen==="signin"          && <SignInScreen onBack={()=>setScreen("home")} onSignedInLO={()=>setScreen("lo-app")} onSignedInCompany={()=>setScreen("co-app")} onSignedInPinnacle={()=>setScreen("co-app-pinnacle")}/>}
+      {screen==="lo-onboard"      && <LOOnboard onDone={()=>setScreen("lo-app")}/>}
+      {screen==="lo-app"          && <LOApp onSignOut={()=>setScreen("home")}/>}
+      {screen==="aspiring"        && <AspiringLO onDone={()=>setScreen("lo-onboard")}/>}
+      {screen==="co-onboard"      && <CompanyOnboard onDone={()=>setScreen("co-app")} onDonePinnacle={()=>setScreen("co-app-pinnacle")}/>}
+      {screen==="co-app"          && <CompanyApp isPinnacle={false} onSignOut={()=>setScreen("home")}/>}
+      {screen==="co-app-pinnacle" && <CompanyApp isPinnacle={true}  onSignOut={()=>setScreen("home")}/>}
+    </div>
+  );
+}
+
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(React.createElement(App));
+  </script>
+</body>
+</html>
